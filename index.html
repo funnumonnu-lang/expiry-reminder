@@ -617,18 +617,22 @@ function renderHistory() {
     ? '<div class="empty">この条件に該当する履歴がありません</div>'
     : filtered.map(function(h) {
       var isSale = h.type === 'sale';
+      var isDelete = h.type === 'delete';
       var disposedDate = new Date(h.disposedAt).toLocaleDateString('ja-JP', {year:'numeric',month:'2-digit',day:'2-digit'});
       var expFmt = h.expiry.replace(/-/g,'/');
       var dl = h.daysLeft;
       var typeBadge = isSale
         ? '<span class="badge badge-ok" style="margin-right:6px;">💰 売上</span>'
-        : '<span class="badge badge-danger" style="margin-right:6px;">🗑 廃棄</span>';
+        : isDelete
+          ? '<span class="badge" style="margin-right:6px;background:var(--bg2);color:var(--text3);">🗑 削除</span>'
+          : '<span class="badge badge-danger" style="margin-right:6px;">🗑 廃棄</span>';
       var statusTxt = dl < 0 ? '期限切れ '+Math.abs(dl)+'日超過' : dl===0 ? '期限当日' : '期限'+dl+'日前';
       var statusColor = dl < 0 ? 'var(--red-text)' : dl<=3 ? 'var(--amber-text)' : 'var(--text2)';
       var thumb = h.photo
         ? '<div class="thumb"><img src="'+h.photo+'" alt="'+escHtml(h.name)+'" loading="lazy" /></div>'
         : '<div class="thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></div>';
-      return '<div class="item-card'+(isSale?'':' expired')+'"'+(isSale?' style="border-color:var(--green-text);"':'')+'>'+
+      var cardStyle = isSale ? ' style="border-color:var(--green-text);"' : isDelete ? ' style="opacity:0.7;"' : '';
+      return '<div class="item-card'+(isSale?'':' expired')+'"'+cardStyle+'>'+
         thumb+
         '<div class="item-info">'+
           '<div class="item-name">'+escHtml(h.name)+'</div>'+
@@ -636,7 +640,7 @@ function renderHistory() {
           '<div style="font-size:11px;color:'+statusColor+';margin-top:2px;">'+statusTxt+'</div>'+
         '</div>'+
         '<div style="text-align:right;flex-shrink:0;">'+
-          '<div style="font-size:11px;color:var(--text3);">'+(isSale?'売上日':'廃棄日')+'</div>'+
+          '<div style="font-size:11px;color:var(--text3);">'+(isSale?'売上日':isDelete?'削除日':'廃棄日')+'</div>'+
           '<div style="font-size:12px;color:var(--text2);">'+disposedDate+'</div>'+
         '</div>'+
       '</div>';
@@ -689,9 +693,26 @@ function removeItem(id, type) {
 }
 
 function deleteItem(id) {
+  var item = null;
+  for (var i=0; i<items.length; i++) { if (items[i].id===id) { item=items[i]; break; } }
+  if (!item) return;
+  var entry = {
+    id: item.id,
+    name: item.name,
+    expiry: item.expiry,
+    remind: item.remind,
+    photo: item.photo,
+    supplier: item.supplier || '',
+    createdAt: getCreatedAt(item),
+    type: 'delete',
+    disposedAt: new Date().toISOString(),
+    daysLeft: getDaysLeft(item.expiry)
+  };
+  dispHistory.unshift(entry);
+  if (dispHistory.length > 200) dispHistory = dispHistory.slice(0, 200);
   items = items.filter(function(i){ return i.id!==id; });
   save();
-  cloudOp('deleteItems', { ids: [id] });
+  cloudOp('process', { ids: [id], entries: [entry] });
   showToast('削除しました');
   renderAll();
 }
@@ -1025,22 +1046,20 @@ function bulkProcess(type) {
     var item = null;
     for (var i = 0; i < items.length; i++) { if (items[i].id === id) { item = items[i]; break; } }
     if (!item) return;
-    if (type === 'sale' || type === 'dispose') {
-      var entry = {
-        id: item.id,
-        name: item.name,
-        expiry: item.expiry,
-        remind: item.remind,
-        photo: item.photo,
-        supplier: item.supplier || '',
-        createdAt: getCreatedAt(item),
-        type: type,
-        disposedAt: new Date().toISOString(),
-        daysLeft: getDaysLeft(item.expiry)
-      };
-      dispHistory.unshift(entry);
-      entries.push(entry);
-    }
+    var entry = {
+      id: item.id,
+      name: item.name,
+      expiry: item.expiry,
+      remind: item.remind,
+      photo: item.photo,
+      supplier: item.supplier || '',
+      createdAt: getCreatedAt(item),
+      type: type,
+      disposedAt: new Date().toISOString(),
+      daysLeft: getDaysLeft(item.expiry)
+    };
+    dispHistory.unshift(entry);
+    entries.push(entry);
     items = items.filter(function(i) { return i.id !== id; });
     doneIds.push(id);
     count++;
@@ -1048,8 +1067,7 @@ function bulkProcess(type) {
   if (dispHistory.length > 200) dispHistory = dispHistory.slice(0, 200);
   save();
   if (doneIds.length) {
-    if (type === 'delete') cloudOp('deleteItems', { ids: doneIds });
-    else cloudOp('process', { ids: doneIds, entries: entries });
+    cloudOp('process', { ids: doneIds, entries: entries });
   }
   selectedIds = {};
   selectionMode = false;
