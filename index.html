@@ -152,6 +152,21 @@
         <button class="confirm-btn dispose-btn" onclick="bulkProcess('dispose')">🗑 まとめて廃棄</button>
         <button class="confirm-btn" onclick="bulkProcess('delete')" style="color:var(--text3);">完全削除</button>
       </div>
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center;">
+        <select id="bulk-remind" style="height:32px;border:0.5px solid var(--border2);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text2);padding:0 8px;outline:none;">
+          <option value="">リマインド変更...</option>
+          <option value="1">1日前</option>
+          <option value="2">2日前</option>
+          <option value="3">3日前</option>
+          <option value="5">5日前</option>
+          <option value="7">7日前</option>
+          <option value="14">14日前</option>
+          <option value="30">30日前</option>
+        </select>
+        <button class="confirm-btn" onclick="bulkSetRemind()">適用</button>
+        <select id="bulk-supplier" style="height:32px;border:0.5px solid var(--border2);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text2);padding:0 8px;outline:none;"></select>
+        <button class="confirm-btn" onclick="bulkSetSupplier()">適用</button>
+      </div>
     </div>
     <div class="filter-bar">
       <button class="filter-btn active" onclick="setFilter('all',this)">すべて</button>
@@ -1016,6 +1031,15 @@ function updateBulkBar() {
   if (el) el.textContent = n + '件選択中';
 }
 
+function exitSelectionMode() {
+  selectedIds = {};
+  selectionMode = false;
+  var btn = document.getElementById('select-mode-btn');
+  btn.classList.remove('active');
+  btn.textContent = '☑ 選択';
+  document.getElementById('bulk-bar').style.display = 'none';
+}
+
 function bulkProcess(type) {
   var ids = Object.keys(selectedIds).map(Number);
   if (!ids.length) { showToast('商品が選択されていません'); return; }
@@ -1049,14 +1073,54 @@ function bulkProcess(type) {
   if (doneIds.length) {
     cloudOp('process', { ids: doneIds, entries: entries });
   }
-  selectedIds = {};
-  selectionMode = false;
-  var btn = document.getElementById('select-mode-btn');
-  btn.classList.remove('active');
-  btn.textContent = '☑ 選択';
-  document.getElementById('bulk-bar').style.display = 'none';
+  exitSelectionMode();
   var label = type === 'sale' ? '売上として記録' : type === 'dispose' ? '廃棄として記録' : '削除';
   showToast(count + '件を' + label + 'しました ✓');
+  renderAll();
+}
+
+function bulkSetRemind() {
+  var val = parseInt(document.getElementById('bulk-remind').value);
+  if (!val) { showToast('リマインド日数を選択してください'); return; }
+  var ids = Object.keys(selectedIds).map(Number);
+  if (!ids.length) { showToast('商品が選択されていません'); return; }
+  var count = 0;
+  ids.forEach(function(id) {
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].id === id) { items[i].remind = val; count++; break; }
+    }
+  });
+  save();
+  ids.forEach(function(id) {
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].id === id) { cloudOp('updateItem', { item: items[i] }); break; }
+    }
+  });
+  exitSelectionMode();
+  showToast(count + '件のリマインドを変更しました ✓');
+  renderAll();
+}
+
+function bulkSetSupplier() {
+  var sel = document.getElementById('bulk-supplier');
+  if (sel.value === '__none__') { showToast('仕入れ先を選択してください'); return; }
+  var val = sel.value;
+  var ids = Object.keys(selectedIds).map(Number);
+  if (!ids.length) { showToast('商品が選択されていません'); return; }
+  var count = 0;
+  ids.forEach(function(id) {
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].id === id) { items[i].supplier = val; count++; break; }
+    }
+  });
+  save();
+  ids.forEach(function(id) {
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].id === id) { cloudOp('updateItem', { item: items[i] }); break; }
+    }
+  });
+  exitSelectionMode();
+  showToast(count + '件の仕入れ先を変更しました ✓');
   renderAll();
 }
 
@@ -1183,6 +1247,10 @@ function refreshSupplierSelects() {
   }
   var psel = document.getElementById('pdf-supplier');
   if (psel) { var pv = psel.value; psel.innerHTML = opts; psel.value = pv; }
+  var bsel = document.getElementById('bulk-supplier');
+  if (bsel) {
+    bsel.innerHTML = '<option value="__none__">仕入れ先を変更...</option>' + opts;
+  }
 }
 
 
