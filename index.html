@@ -86,6 +86,8 @@
   .filter-bar { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
   .filter-btn { height: 30px; padding: 0 12px; border: 0.5px solid var(--border2); border-radius: 20px; font-size: 12px; background: var(--bg); color: var(--text2); cursor: pointer; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
   .filter-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .sort-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: var(--bg2); border-radius: 20px; padding: 4px 10px; flex: 1 1 auto; min-width: 0; }
+  .mode-toggle-btn { flex-shrink: 0; margin-left: auto; border: 1.5px solid var(--blue-text); color: var(--blue-text); font-weight: 500; }
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
   .modal-overlay.show { display: flex; }
   .modal { background: var(--bg); border-radius: var(--radius-lg); padding: 20px; max-width: 360px; width: 100%; border: 0.5px solid var(--border); }
@@ -134,12 +136,14 @@
   <!-- リストタブ -->
   <div id="tab-list">
     <div class="stat-row" id="stat-row"></div>
-    <div class="filter-bar" style="margin-bottom:8px;">
-      <span style="font-size:12px;color:var(--text3);align-self:center;flex-shrink:0;">並び替え:</span>
-      <button class="filter-btn sort-btn active" id="sort-expiry" onclick="setSort('expiry',this)">📅 期限</button>
-      <button class="filter-btn sort-btn" id="sort-name" onclick="setSort('name',this)">🔤 商品名</button>
-      <button class="filter-btn sort-btn" id="sort-created" onclick="setSort('created',this)">🕐 登録日</button>
-      <button class="filter-btn" id="select-mode-btn" onclick="toggleSelectionMode()" style="margin-left:auto;">☑ 選択</button>
+    <div class="filter-bar" style="margin-bottom:8px;align-items:center;">
+      <div class="sort-group">
+        <span style="font-size:12px;color:var(--text3);flex-shrink:0;">並び替え:</span>
+        <button class="filter-btn sort-btn active" id="sort-expiry" onclick="setSort('expiry',this)">📅 期限</button>
+        <button class="filter-btn sort-btn" id="sort-name" onclick="setSort('name',this)">🔤 商品名</button>
+        <button class="filter-btn sort-btn" id="sort-created" onclick="setSort('created',this)">🕐 登録日</button>
+      </div>
+      <button class="filter-btn mode-toggle-btn" id="select-mode-btn" onclick="toggleSelectionMode()">☑ 選択</button>
     </div>
     <div id="bulk-bar" style="display:none;background:var(--bg);border:0.5px solid var(--border2);border-radius:12px;padding:10px 12px;margin-bottom:10px;">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
