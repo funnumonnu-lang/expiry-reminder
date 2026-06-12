@@ -1,0 +1,1806 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>賞味期限リマインダー</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg2: #f5f5f3; --bg3: #eeede9;
+    --text: #1a1a18; --text2: #6b6b67; --text3: #9b9b96;
+    --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.2);
+    --radius: 10px; --radius-lg: 14px;
+    --green-bg: #eaf3de; --green-text: #3b6d11;
+    --amber-bg: #faeeda; --amber-text: #854f0b;
+    --red-bg: #fcebeb; --red-text: #a32d2d;
+    --gray-bg: #f1efe8; --gray-text: #5f5e5a;
+    --blue-bg: #e6f1fb; --blue-text: #185fa5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e1c; --bg2: #2a2a27; --bg3: #333330;
+      --text: #f0efe8; --text2: #a0a09a; --text3: #70706a;
+      --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.18);
+      --green-bg: #1b3010; --green-text: #a0d060;
+      --amber-bg: #2e1e06; --amber-text: #f0b050;
+      --red-bg: #2e1010; --red-text: #f08080;
+      --gray-bg: #2a2a27; --gray-text: #a0a09a;
+      --blue-bg: #0c1e30; --blue-text: #6ab0f0;
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg3); color: var(--text); min-height: 100vh; }
+  .container { max-width: 480px; margin: 0 auto; padding: 20px 16px 60px; }
+  .app-header { text-align: center; margin-bottom: 24px; padding-top: 12px; }
+  .app-header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
+  .app-header p { font-size: 13px; color: var(--text2); margin-top: 4px; }
+  .tab-bar { display: flex; gap: 3px; background: var(--bg2); border-radius: var(--radius); padding: 3px; margin-bottom: 20px; border: 0.5px solid var(--border); }
+  .tab { flex: 1; text-align: center; padding: 8px 2px; font-size: 12px; border-radius: 8px; cursor: pointer; color: var(--text2); border: none; background: none; display: flex; align-items: center; justify-content: center; gap: 4px; transition: all 0.15s; }
+  .tab svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .tab.active { background: var(--bg); color: var(--text); font-weight: 500; border: 0.5px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 14px; }
+  .section-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); margin-bottom: 10px; }
+  .form-group { margin-bottom: 12px; }
+  .form-group label { display: block; font-size: 13px; color: var(--text2); margin-bottom: 5px; }
+  .form-group input, .form-group select { width: 100%; height: 40px; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 0 12px; font-size: 14px; background: var(--bg); color: var(--text); outline: none; transition: box-shadow 0.15s; }
+  .form-group input:focus, .form-group select:focus { box-shadow: 0 0 0 2.5px var(--blue-bg); border-color: #378add; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .photo-upload-area { border: 1.5px dashed var(--border2); border-radius: var(--radius); height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; cursor: pointer; position: relative; overflow: hidden; background: var(--bg2); transition: border-color 0.15s; }
+  .photo-upload-area:hover { border-color: #378add; }
+  .photo-upload-area input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 2; }
+  .photo-upload-area span { font-size: 12px; color: var(--text3); pointer-events: none; }
+  .photo-upload-area img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+  .photo-upload-area .remove-photo { position: absolute; top: 4px; right: 4px; z-index: 3; background: rgba(0,0,0,0.5); border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; color: white; font-size: 12px; display: none; align-items: center; justify-content: center; }
+  .photo-upload-area:hover .remove-photo { display: flex; }
+  .primary-btn { width: 100%; height: 44px; background: var(--text); color: var(--bg); border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; transition: opacity 0.15s, transform 0.1s; }
+  .primary-btn:hover { opacity: 0.85; }
+  .primary-btn:active { transform: scale(0.98); }
+  .secondary-btn { height: 38px; padding: 0 16px; border: 0.5px solid var(--border2); border-radius: var(--radius); font-size: 13px; background: var(--bg); color: var(--text); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background 0.15s; }
+  .secondary-btn:hover { background: var(--bg2); }
+  .item-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; transition: border-color 0.2s; }
+  .item-card.warning { border-color: #ef9f27; }
+  .item-card.danger { border-color: #e24b4a; }
+  .item-card.expired { opacity: 0.6; }
+  .thumb { width: 50px; height: 50px; border-radius: 10px; flex-shrink: 0; background: var(--bg2); border: 0.5px solid var(--border); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+  .thumb svg { width: 22px; height: 22px; color: var(--text3); }
+  .item-info { flex: 1; min-width: 0; }
+  .item-name { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+  .item-meta { font-size: 12px; color: var(--text2); }
+  .badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
+  .badge-ok { background: var(--green-bg); color: var(--green-text); }
+  .badge-warning { background: var(--amber-bg); color: var(--amber-text); }
+  .badge-danger { background: var(--red-bg); color: var(--red-text); }
+  .badge-expired { background: var(--gray-bg); color: var(--gray-text); }
+  .del-btn { background: none; border: none; cursor: pointer; color: var(--text3); padding: 6px; border-radius: 8px; flex-shrink: 0; display: flex; transition: color 0.15s, background 0.15s; }
+  .del-btn:hover { color: var(--red-text); background: var(--red-bg); }
+  .del-btn svg { width: 16px; height: 16px; }
+  .confirm-row { background: var(--bg2); border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 8px; margin-top: -6px; }
+  .confirm-btn { height: 30px; padding: 0 12px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 0.5px solid var(--border2); background: var(--bg); color: var(--text2); }
+  .dispose-btn { background: var(--red-bg); color: var(--red-text); border-color: var(--red-text); font-weight: 500; }
+  .sale-btn { background: var(--green-bg); color: var(--green-text); border-color: var(--green-text); font-weight: 500; }
+  .empty { text-align: center; padding: 40px 20px; color: var(--text2); font-size: 14px; }
+  .empty svg { width: 40px; height: 40px; margin-bottom: 10px; opacity: 0.3; display: block; margin-left: auto; margin-right: auto; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--text); color: var(--bg); padding: 10px 20px; border-radius: var(--radius); font-size: 13px; opacity: 0; transition: opacity 0.25s, transform 0.25s; pointer-events: none; z-index: 9999; white-space: nowrap; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .filter-bar { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 2px; }
+  .filter-btn { height: 30px; padding: 0 12px; border: 0.5px solid var(--border2); border-radius: 20px; font-size: 12px; background: var(--bg); color: var(--text2); cursor: pointer; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
+  .filter-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .search-bar { position: relative; margin-bottom: 10px; }
+  .search-bar input { width: 100%; height: 36px; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 0 32px 0 32px; font-size: 13px; background: var(--bg); color: var(--text); outline: none; box-sizing: border-box; transition: box-shadow 0.15s; }
+  .search-bar input:focus { box-shadow: 0 0 0 2.5px var(--blue-bg); border-color: #378add; }
+  .search-bar .si { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; width: 16px; height: 16px; }
+  .search-bar .sc { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text3); cursor: pointer; font-size: 15px; padding: 0; line-height: 1; display: none; }
+  .search-bar.has-value .sc { display: block; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: var(--bg); border-radius: var(--radius-lg); padding: 20px; max-width: 360px; width: 100%; border: 0.5px solid var(--border); }
+  .modal h3 { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
+  .modal p { font-size: 13px; color: var(--text2); margin-bottom: 14px; }
+  .modal-item { font-size: 13px; padding: 6px 10px; background: var(--bg2); border-radius: 8px; margin-bottom: 6px; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 14px; }
+  .modal-actions .cancel-btn { flex: 1; height: 38px; border: 0.5px solid var(--border2); border-radius: var(--radius); background: var(--bg); color: var(--text2); cursor: pointer; font-size: 13px; }
+  .modal-actions .send-btn { flex: 2; height: 38px; background: var(--text); color: var(--bg); border: none; border-radius: var(--radius); font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .modal-actions .send-btn:hover { opacity: 0.85; }
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+  .stat-card { background: var(--bg2); border-radius: var(--radius); padding: 10px 12px; text-align: center; }
+  .stat-val { font-size: 22px; font-weight: 600; }
+  .stat-lbl { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  a { color: var(--blue-text); }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+</head>
+<body>
+<div class="container">
+  <div class="app-header">
+    <h1>🍱 賞味期限リマインダー</h1>
+    <p>期限切れ食品を減らして食品ロスをなくそう</p>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab active" onclick="switchTab('list')" id="tab-btn-list">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      リスト
+    </button>
+    <button class="tab" onclick="switchTab('add')" id="tab-btn-add">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      追加
+    </button>
+    <button class="tab" onclick="switchTab('history')" id="tab-btn-history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+      履歴
+    </button>
+    <button class="tab" onclick="switchTab('settings')" id="tab-btn-settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      設定
+    </button>
+  </div>
+
+  <!-- リストタブ -->
+  <div id="tab-list">
+    <div class="stat-row" id="stat-row"></div>
+    <div class="filter-bar" style="margin-bottom:8px;">
+      <span style="font-size:12px;color:var(--text3);align-self:center;flex-shrink:0;">並び替え:</span>
+      <button class="filter-btn sort-btn active" id="sort-expiry" onclick="setSort('expiry',this)">📅 期限が近い順</button>
+      <button class="filter-btn sort-btn" id="sort-name" onclick="setSort('name',this)">🔤 商品名順</button>
+      <button class="filter-btn sort-btn" id="sort-created" onclick="setSort('created',this)">🕐 登録が新しい順</button>
+      <button class="filter-btn" id="select-mode-btn" onclick="toggleSelectionMode()" style="margin-left:auto;">☑ 選択</button>
+    </div>
+    <div id="bulk-bar" style="display:none;background:var(--bg);border:0.5px solid var(--border2);border-radius:12px;padding:10px 12px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span id="bulk-count" style="font-size:13px;font-weight:500;">0件選択中</span>
+        <button class="filter-btn" onclick="selectAllVisible()">すべて選択</button>
+        <button class="filter-btn" onclick="clearSelection()">解除</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+        <button class="confirm-btn sale-btn" onclick="bulkProcess('sale')">💰 まとめて売上</button>
+        <button class="confirm-btn dispose-btn" onclick="bulkProcess('dispose')">🗑 まとめて廃棄</button>
+        <button class="confirm-btn" onclick="bulkProcess('delete')" style="color:var(--text3);">完全削除</button>
+      </div>
+    </div>
+    <div class="search-bar" id="search-bar">
+      <svg class="si" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input type="search" id="search-input" placeholder="商品名で検索…" oninput="onSearchInput(this.value)" />
+      <button class="sc" onclick="clearSearch()" title="クリア">✕</button>
+    </div>
+    <div class="filter-bar">
+      <button class="filter-btn active" onclick="setFilter('all',this)">すべて</button>
+      <button class="filter-btn" onclick="setFilter('urgent',this)">⚠ 要注意</button>
+      <button class="filter-btn" onclick="setFilter('ok',this)">✓ 余裕あり</button>
+      <button class="filter-btn" onclick="setFilter('expired',this)">期限切れ</button>
+      <select id="filter-supplier" onchange="renderList()" style="height:30px;border:0.5px solid var(--border2);border-radius:20px;font-size:12px;background:var(--bg);color:var(--text2);padding:0 8px;outline:none;flex-shrink:0;"></select>
+    </div>
+    <div id="items-list"></div>
+  </div>
+
+  <!-- 追加タブ -->
+  <div id="tab-add" style="display:none;">
+    <div class="card">
+      <p class="section-label">PDFから一括登録</p>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:10px;">お届け情報のPDFを選ぶと、商品画像・商品名・賞味/消費期限・個数を自動で読み取ります。個数分だけまとめて登録されます。</p>
+      <input type="file" id="pdf-input" accept="application/pdf" onchange="handlePdfUpload(event)" style="display:none;" />
+      <button class="secondary-btn" onclick="document.getElementById('pdf-input').click()">📄 PDFを選択</button>
+      <p id="pdf-status" style="font-size:12px;color:var(--text3);margin-top:8px;"></p>
+      <div id="pdf-preview" style="margin-top:10px;"></div>
+    </div>
+    <div class="card">
+      <p class="section-label" id="add-tab-label">商品情報</p>
+      <div class="form-row" style="margin-bottom:12px;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label>商品名 *</label>
+          <input type="text" id="in-name" placeholder="例：牛乳" />
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>写真</label>
+          <div class="photo-upload-area" id="photo-area">
+            <input type="file" accept="image/*" id="photo-input" onchange="handlePhoto(event)" />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:24px;height:24px;color:var(--text3);"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span>タップして追加</span>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:0;">
+          <label>賞味期限 *</label>
+          <input type="date" id="in-expiry" />
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>リマインド</label>
+          <select id="in-remind">
+            <option value="1">1日前</option>
+            <option value="2">2日前</option>
+            <option value="3" selected>3日前</option>
+            <option value="5">5日前</option>
+            <option value="7">7日前</option>
+            <option value="14">14日前</option>
+            <option value="30">30日前</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:12px;margin-bottom:0;">
+        <label>仕入れ先</label>
+        <select id="in-supplier"></select>
+        <p style="font-size:11px;color:var(--text3);margin-top:4px;">仕入れ先は「設定」タブから追加・編集できます</p>
+      </div>
+      <div class="form-group" style="margin-top:12px;margin-bottom:0;">
+        <label>登録日</label>
+        <input type="date" id="in-created" />
+      </div>
+    </div>
+    <button class="primary-btn" id="submit-btn" onclick="addItem()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      登録する
+    </button>
+    <button class="secondary-btn" id="cancel-edit-btn" onclick="cancelEdit()" style="display:none;width:100%;margin-top:8px;justify-content:center;">
+      編集をキャンセル
+    </button>
+  </div>
+
+  <!-- 履歴タブ -->
+  <div id="tab-history" style="display:none;">
+    <div id="history-list"></div>
+  </div>
+
+  <!-- 設定タブ -->
+  <div id="tab-settings" style="display:none;">
+    <div class="card">
+      <p class="section-label">仕入れ先カテゴリ</p>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:10px;">商品に紐づける仕入れ先を管理します。名前はその場で編集できます。</p>
+      <div id="supplier-list"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <input type="text" id="new-supplier" placeholder="例：○○食品" style="flex:1;height:38px;border:0.5px solid var(--border2);border-radius:10px;padding:0 12px;font-size:13px;background:var(--bg);color:var(--text);outline:none;" onkeydown="if(event.key==='Enter')addSupplier()" />
+        <button class="secondary-btn" onclick="addSupplier()">＋ 追加</button>
+      </div>
+    </div>
+    <div class="card">
+      <p class="section-label">通知メール設定</p>
+      <div class="form-group">
+        <label>通知先メールアドレス</label>
+        <input type="email" id="in-email" placeholder="your@email.com" />
+      </div>
+      <div class="form-group">
+        <label>自動チェック</label>
+        <select id="in-auto">
+          <option value="manual">手動のみ</option>
+          <option value="daily">毎日（ページを開いたとき）</option>
+        </select>
+      </div>
+      <button class="secondary-btn" onclick="saveSettings()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        保存
+      </button>
+    </div>
+    <div class="card">
+      <p class="section-label">今すぐ通知チェック</p>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">リマインド期限を迎えた商品があればメール通知します。</p>
+      <button class="secondary-btn" onclick="runCheck()" style="margin-bottom:10px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M22 17H2a3 3 0 004.95-2.34L7 10a5 5 0 0110 0l.05 4.66A3 3 0 0022 17z"/><path d="M10.3 21a1.94 1.94 0 003.4 0"/></svg>
+        チェック &amp; 通知
+      </button>
+      <p id="last-check-text" style="font-size:12px;color:var(--text3);"></p>
+    </div>
+    <div class="card">
+      <p class="section-label">☁ チーム共有（Google Drive）</p>
+      <div id="cloud-status"></div>
+      <div class="form-group">
+        <label>中継スクリプトのURL（GASウェブアプリURL）</label>
+        <input type="text" id="in-gas-url" placeholder="https://script.google.com/macros/s/.../exec" />
+      </div>
+      <div class="form-group">
+        <label>合言葉（スクリプトのTOKENと同じ文字列）</label>
+        <input type="text" id="in-gas-token" placeholder="自分で決めた合言葉" />
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="secondary-btn" onclick="saveCloudSettings()">💾 保存</button>
+        <button class="secondary-btn" id="backup-btn" onclick="backupToCloud(false)">☁ 今すぐバックアップ</button>
+        <button class="secondary-btn" id="restore-btn" onclick="askRestore()">🔄 今すぐ同期</button>
+      </div>
+      <div id="restore-confirm" style="display:none;margin-top:10px;background:var(--amber-bg);border-radius:10px;padding:10px 12px;">
+        <p style="font-size:12px;color:var(--amber-text);margin-bottom:8px;">⚠ この端末のデータをDriveのバックアップで置き換えます。よろしいですか？</p>
+        <button class="confirm-btn" onclick="restoreFromCloud()" style="background:var(--amber-bg);color:var(--amber-text);border-color:var(--amber-text);font-weight:500;">置き換えて復元</button>
+        <button class="confirm-btn" onclick="document.getElementById('restore-confirm').style.display='none'">キャンセル</button>
+      </div>
+      <p style="font-size:11px;color:var(--text3);margin-top:10px;">チーム全員が同じURLと合言葉を設定すると、Drive上の共有スプレッドシート（賞味期限リマインダー_データ）を全員で読み書きします。変更は操作のたびに即時反映され、アプリを開いたとき・タブに戻ったときに最新データを自動取得します。※ 写真はこの端末内のみに保存され、共有データには含まれません。</p>
+    </div>
+    <div class="card">
+      <p class="section-label">データ管理</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="secondary-btn" onclick="exportData()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          エクスポート
+        </button>
+        <button class="secondary-btn" onclick="document.getElementById('import-file').click()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          インポート
+        </button>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)" />
+        <button class="secondary-btn" onclick="clearAll()" style="color:var(--red-text);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+          全削除
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 通知確認モーダル -->
+<div class="modal-overlay" id="notify-modal">
+  <div class="modal">
+    <h3>🔔 リマインド通知</h3>
+    <p>以下の商品の期限が近づいています。メールで通知しますか？</p>
+    <div id="modal-items"></div>
+    <div id="modal-email-row" style="margin-top:10px;"></div>
+    <div class="modal-actions">
+      <button class="cancel-btn" onclick="closeModal()">キャンセル</button>
+      <button class="send-btn" onclick="sendEmail()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2-2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        メールを送信
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var DB_ITEMS = 'expiry-v2-items';
+var DB_SETTINGS = 'expiry-v2-settings';
+var DB_LASTCHECK = 'expiry-v2-lastcheck';
+var DB_HISTORY = 'expiry-v2-history';
+
+// localStorageが使えない環境（プレビュー等）でも動くようにするラッパー
+var memStore = {};
+var storageOk = true;
+try { localStorage.setItem('__test__', '1'); localStorage.removeItem('__test__'); } catch(e) { storageOk = false; }
+function lsGet(k) { try { return localStorage.getItem(k); } catch(e) { return memStore[k] || null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch(e) { memStore[k] = v; } }
+
+// 予期しないエラーを必ず画面に表示する
+window.onerror = function(msg) {
+  var t = document.getElementById('toast');
+  if (t) { t.textContent = '⚠ エラー: ' + msg; t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); }, 5000); }
+};
+
+var items = [];
+var dispHistory = [];
+var settings = { email: '', auto: 'manual' };
+var currentFilter = 'all';
+var pendingPhoto = null;
+var notifyTargets = [];
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function load() {
+  try { items = JSON.parse(lsGet(DB_ITEMS) || '[]'); } catch(e) { items = []; }
+  try { dispHistory = JSON.parse(lsGet(DB_HISTORY) || '[]'); } catch(e) { dispHistory = []; }
+  try { settings = Object.assign({ email:'', auto:'manual', suppliers: [] }, JSON.parse(lsGet(DB_SETTINGS) || '{}')); } catch(e) {}
+  if (!Array.isArray(settings.suppliers)) settings.suppliers = [];
+  renderSuppliers();
+  refreshSupplierSelects();
+  if (settings.gasUrl) document.getElementById('in-gas-url').value = settings.gasUrl;
+  if (settings.gasToken) document.getElementById('in-gas-token').value = settings.gasToken;
+  renderCloudStatus();
+  if (!storageOk) {
+    setTimeout(function() { showToast('⚠ この環境ではデータを保存できません（プレビュー画面の可能性）。ダウンロードしてブラウザで開いてください'); }, 500);
+  }
+  if (cloudConfigured()) {
+    syncFromCloud(false);
+  }
+  if (settings.email) document.getElementById('in-email').value = settings.email;
+  if (settings.auto) document.getElementById('in-auto').value = settings.auto;
+  var lc = lsGet(DB_LASTCHECK);
+  if (lc) document.getElementById('last-check-text').textContent = '最終チェック: ' + new Date(lc).toLocaleString('ja-JP');
+  var defaultDate = new Date(); defaultDate.setDate(defaultDate.getDate() + 7);
+  document.getElementById('in-expiry').value = defaultDate.toISOString().split('T')[0];
+  document.getElementById('in-created').value = todayStr();
+  renderAll();
+  if (settings.auto === 'daily') {
+    var today = new Date().toDateString();
+    if (lsGet(DB_LASTCHECK + '-date') !== today) autoCheck();
+  }
+}
+
+function save() {
+  lsSet(DB_ITEMS, JSON.stringify(items));
+  lsSet(DB_HISTORY, JSON.stringify(dispHistory));
+}
+
+function saveSettings() {
+  settings.email = document.getElementById('in-email').value.trim();
+  settings.auto = document.getElementById('in-auto').value;
+  lsSet(DB_SETTINGS, JSON.stringify(settings));
+  cloudOp('saveSettings', { settings: strippedSettings() });
+  showToast('設定を保存しました ✓');
+}
+
+function getDaysLeft(expiry) {
+  var today = new Date(); today.setHours(0,0,0,0);
+  return Math.round((new Date(expiry) - today) / 86400000);
+}
+
+function getStatus(item) {
+  var d = getDaysLeft(item.expiry);
+  if (d < 0) return 'expired';
+  if (d === 0 || d === 1) return 'danger';
+  if (d <= item.remind) return 'warning';
+  return 'ok';
+}
+
+// 登録日を取得（旧データはIDがタイムスタンプなのでそこから復元）
+function getCreatedAt(item) {
+  if (item.createdAt) return item.createdAt;
+  if (item.id && item.id > 1000000000000) return new Date(item.id).toISOString().split('T')[0];
+  return '';
+}
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function renderAll() {
+  renderStats();
+  renderList();
+  renderHistory();
+}
+
+function renderStats() {
+  var total = items.length;
+  var urgent = items.filter(function(i){ var s=getStatus(i); return s==='danger'||s==='warning'; }).length;
+  var expired = items.filter(function(i){ return getStatus(i)==='expired'; }).length;
+  document.getElementById('stat-row').innerHTML =
+    '<div class="stat-card"><div class="stat-val">'+total+'</div><div class="stat-lbl">登録数</div></div>' +
+    '<div class="stat-card" style="background:'+(urgent>0?'var(--amber-bg)':'var(--bg2)')+';">' +
+      '<div class="stat-val" style="color:'+(urgent>0?'var(--amber-text)':'var(--text)')+'">'+urgent+'</div>' +
+      '<div class="stat-lbl">要注意</div></div>' +
+    '<div class="stat-card" style="background:'+(expired>0?'var(--red-bg)':'var(--bg2)')+';">' +
+      '<div class="stat-val" style="color:'+(expired>0?'var(--red-text)':'var(--text)')+'">'+expired+'</div>' +
+      '<div class="stat-lbl">期限切れ</div></div>';
+}
+
+var currentSort = 'expiry';
+var currentSearch = '';
+
+function onSearchInput(val) {
+  currentSearch = val;
+  document.getElementById('search-bar').classList.toggle('has-value', val.length > 0);
+  renderList();
+}
+
+function clearSearch() {
+  currentSearch = '';
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-bar').classList.remove('has-value');
+  renderList();
+}
+
+function setSort(s, btn) {
+  currentSort = s;
+  document.querySelectorAll('.sort-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderList();
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn:not(.sort-btn):not(.hist-filter-btn)').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderList();
+}
+
+function renderList() {
+  var el = document.getElementById('items-list');
+  var filtered = items.slice();
+  if (currentSort === 'name') {
+    filtered.sort(function(a,b){ return a.name.localeCompare(b.name, 'ja'); });
+  } else if (currentSort === 'created') {
+    filtered.sort(function(a,b){ return (getCreatedAt(b)||'').localeCompare(getCreatedAt(a)||''); });
+  } else {
+    filtered.sort(function(a,b){ return new Date(a.expiry)-new Date(b.expiry); });
+  }
+  if (currentFilter === 'urgent') filtered = filtered.filter(function(i){ var s=getStatus(i); return s==='danger'||s==='warning'; });
+  else if (currentFilter === 'ok') filtered = filtered.filter(function(i){ return getStatus(i)==='ok'; });
+  else if (currentFilter === 'expired') filtered = filtered.filter(function(i){ return getStatus(i)==='expired'; });
+
+  var supFilter = document.getElementById('filter-supplier');
+  if (supFilter && supFilter.value !== '__all__') {
+    var sv = supFilter.value;
+    filtered = filtered.filter(function(i){ return (i.supplier || '') === sv; });
+  }
+
+  if (currentSearch) {
+    var kw = currentSearch.toLowerCase();
+    filtered = filtered.filter(function(i){ return i.name.toLowerCase().indexOf(kw) !== -1; });
+  }
+
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2zM16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>' +
+      (items.length===0 ? '登録されている商品がありません<br><small style="font-size:12px;color:var(--text3);">「追加」タブから登録してください</small>' : 'この条件に該当する商品がありません') + '</div>';
+    return;
+  }
+
+  window._visibleIds = filtered.map(function(i) { return i.id; });
+
+  el.innerHTML = filtered.map(function(item) {
+    var d = getDaysLeft(item.expiry);
+    var st = getStatus(item);
+    var cardCls = st==='danger'?'danger':st==='warning'?'warning':st==='expired'?'expired':'';
+    var badgeCls = st==='expired'?'badge-expired':st==='danger'?'badge-danger':st==='warning'?'badge-warning':'badge-ok';
+    var badgeTxt = st==='expired'?'期限切れ':d===0?'今日まで！':d===1?'明日まで！':'あと'+d+'日';
+    var thumb = item.photo
+      ? '<div class="thumb"><img src="'+item.photo+'" alt="'+escHtml(item.name)+'" loading="lazy" /></div>'
+      : '<div class="thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></div>';
+    var expFmt = item.expiry.replace(/-/g,'/');
+    var infoHtml =
+      '<div class="item-info">'+
+        '<div class="item-name">'+escHtml(item.name)+'</div>'+
+        '<div class="item-meta">期限：'+expFmt+'　'+item.remind+'日前に通知'+
+          (getCreatedAt(item) ? '<br>登録：'+getCreatedAt(item).replace(/-/g,'/') : '')+
+          (item.supplier ? '<br><span style="display:inline-block;margin-top:2px;font-size:11px;background:var(--blue-bg);color:var(--blue-text);padding:1px 8px;border-radius:10px;">🏷 '+escHtml(item.supplier)+'</span>' : '')+
+        '</div>'+
+      '</div>';
+
+    if (selectionMode) {
+      var checked = !!selectedIds[item.id];
+      return '<div class="item-card '+cardCls+'" onclick="toggleSelect('+item.id+')" style="cursor:pointer;'+(checked?'border-color:var(--blue-text);background:var(--blue-bg);':'')+'">'+
+        '<span style="font-size:20px;flex-shrink:0;color:'+(checked?'var(--blue-text)':'var(--text3)')+';">'+(checked?'☑':'☐')+'</span>'+
+        thumb+
+        infoHtml+
+        '<span class="badge '+badgeCls+'">'+badgeTxt+'</span>'+
+      '</div>';
+    }
+
+    return '<div class="item-card '+cardCls+'" id="card-'+item.id+'">'+
+      thumb+
+      infoHtml+
+      '<span class="badge '+badgeCls+'">'+badgeTxt+'</span>'+
+      '<button class="del-btn" onclick="startEdit('+item.id+')" title="編集" style="color:var(--blue-text);">'+
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'+
+      '</button>'+
+      '<button class="del-btn" onclick="confirmDispose('+item.id+')" title="廃棄・削除">'+
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>'+
+      '</button>'+
+    '</div>'+
+    '<div class="confirm-row" id="confirm-'+item.id+'" style="display:none;">'+
+      '<span style="font-size:12px;color:var(--text2);">「'+escHtml(item.name)+'」をどうしますか？</span>'+
+      '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">'+
+        '<button class="confirm-btn sale-btn" onclick="removeItem('+item.id+', \'sale\')">💰 売上</button>'+
+        '<button class="confirm-btn dispose-btn" onclick="removeItem('+item.id+', \'dispose\')">🗑 廃棄</button>'+
+        '<button class="confirm-btn" onclick="deleteItem('+item.id+')" style="color:var(--text3);">完全削除</button>'+
+        '<button class="confirm-btn" onclick="cancelDispose('+item.id+')" style="color:var(--text3);">キャンセル</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+var historyFilter = 'all';
+
+function setHistoryFilter(f, btn) {
+  historyFilter = f;
+  document.querySelectorAll('.hist-filter-btn').forEach(function(b){ b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  renderHistory();
+}
+
+function renderHistory() {
+  var el = document.getElementById('history-list');
+  if (!el) return;
+  if (!dispHistory.length) {
+    el.innerHTML = '<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>履歴はまだありません</div>';
+    return;
+  }
+
+  // 集計（typeなしの旧データは廃棄として扱う）
+  var saleCount = dispHistory.filter(function(h){ return h.type === 'sale'; }).length;
+  var dispCount = dispHistory.length - saleCount;
+
+  var filtered = dispHistory;
+  if (historyFilter === 'sale') filtered = dispHistory.filter(function(h){ return h.type === 'sale'; });
+  else if (historyFilter === 'dispose') filtered = dispHistory.filter(function(h){ return h.type !== 'sale'; });
+
+  var statsHtml =
+    '<div class="stat-row" style="grid-template-columns:repeat(2,1fr);">' +
+      '<div class="stat-card" style="background:var(--green-bg);"><div class="stat-val" style="color:var(--green-text);">'+saleCount+'</div><div class="stat-lbl">売上</div></div>' +
+      '<div class="stat-card" style="background:var(--red-bg);"><div class="stat-val" style="color:var(--red-text);">'+dispCount+'</div><div class="stat-lbl">廃棄</div></div>' +
+    '</div>';
+
+  var filterHtml =
+    '<div class="filter-bar">' +
+      '<button class="filter-btn hist-filter-btn'+(historyFilter==='all'?' active':'')+'" onclick="setHistoryFilter(\'all\',this)">すべて</button>' +
+      '<button class="filter-btn hist-filter-btn'+(historyFilter==='sale'?' active':'')+'" onclick="setHistoryFilter(\'sale\',this)">💰 売上</button>' +
+      '<button class="filter-btn hist-filter-btn'+(historyFilter==='dispose'?' active':'')+'" onclick="setHistoryFilter(\'dispose\',this)">🗑 廃棄</button>' +
+    '</div>';
+
+  var rows = filtered.length === 0
+    ? '<div class="empty">この条件に該当する履歴がありません</div>'
+    : filtered.map(function(h) {
+      var isSale = h.type === 'sale';
+      var disposedDate = new Date(h.disposedAt).toLocaleDateString('ja-JP', {year:'numeric',month:'2-digit',day:'2-digit'});
+      var expFmt = h.expiry.replace(/-/g,'/');
+      var dl = h.daysLeft;
+      var typeBadge = isSale
+        ? '<span class="badge badge-ok" style="margin-right:6px;">💰 売上</span>'
+        : '<span class="badge badge-danger" style="margin-right:6px;">🗑 廃棄</span>';
+      var statusTxt = dl < 0 ? '期限切れ '+Math.abs(dl)+'日超過' : dl===0 ? '期限当日' : '期限'+dl+'日前';
+      var statusColor = dl < 0 ? 'var(--red-text)' : dl<=3 ? 'var(--amber-text)' : 'var(--text2)';
+      var thumb = h.photo
+        ? '<div class="thumb"><img src="'+h.photo+'" alt="'+escHtml(h.name)+'" loading="lazy" /></div>'
+        : '<div class="thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></div>';
+      return '<div class="item-card'+(isSale?'':' expired')+'"'+(isSale?' style="border-color:var(--green-text);"':'')+'>'+
+        thumb+
+        '<div class="item-info">'+
+          '<div class="item-name">'+escHtml(h.name)+'</div>'+
+          '<div class="item-meta">'+typeBadge+'賞味期限：'+expFmt+(h.supplier ? '　<span style="font-size:11px;color:var(--blue-text);">🏷 '+escHtml(h.supplier)+'</span>' : '')+(h.createdAt ? '<br>登録：'+h.createdAt.replace(/-/g,'/') : '')+'</div>'+
+          '<div style="font-size:11px;color:'+statusColor+';margin-top:2px;">'+statusTxt+'</div>'+
+        '</div>'+
+        '<div style="text-align:right;flex-shrink:0;">'+
+          '<div style="font-size:11px;color:var(--text3);">'+(isSale?'売上日':'廃棄日')+'</div>'+
+          '<div style="font-size:12px;color:var(--text2);">'+disposedDate+'</div>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+
+  el.innerHTML =
+    statsHtml + filterHtml + rows +
+    '<div style="margin-top:12px;text-align:center;">'+
+      '<button class="secondary-btn" onclick="clearHistory()" style="color:var(--text3);font-size:12px;">'+
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>'+
+        '履歴をクリア'+
+      '</button>'+
+    '</div>';
+}
+
+function confirmDispose(id) {
+  document.querySelectorAll('.confirm-row').forEach(function(el){ el.style.display='none'; });
+  var row = document.getElementById('confirm-'+id);
+  if (row) row.style.display = 'block';
+}
+
+function cancelDispose(id) {
+  var row = document.getElementById('confirm-'+id);
+  if (row) row.style.display = 'none';
+}
+
+function removeItem(id, type) {
+  var item = null;
+  for (var i=0; i<items.length; i++) { if (items[i].id===id) { item=items[i]; break; } }
+  if (!item) return;
+  var entry = {
+    id: item.id,
+    name: item.name,
+    expiry: item.expiry,
+    remind: item.remind,
+    photo: item.photo,
+    supplier: item.supplier || '',
+    createdAt: getCreatedAt(item),
+    type: type,
+    disposedAt: new Date().toISOString(),
+    daysLeft: getDaysLeft(item.expiry)
+  };
+  dispHistory.unshift(entry);
+  if (dispHistory.length > 200) dispHistory = dispHistory.slice(0, 200);
+  items = items.filter(function(i){ return i.id!==id; });
+  save();
+  cloudOp('process', { ids: [id], entries: [entry] });
+  showToast(type === 'sale' ? '売上として記録しました ✓' : '廃棄として記録しました ✓');
+  renderAll();
+}
+
+function deleteItem(id) {
+  items = items.filter(function(i){ return i.id!==id; });
+  save();
+  cloudOp('deleteItems', { ids: [id] });
+  showToast('削除しました');
+  renderAll();
+}
+
+function clearHistory() {
+  dispHistory = [];
+  save();
+  cloudOp('clearHistory');
+  renderHistory();
+  showToast('履歴をクリアしました');
+}
+
+function clearAll() {
+  items = [];
+  save();
+  cloudOp('clearAll');
+  renderAll();
+  showToast('データを削除しました');
+}
+
+function handlePhoto(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    pendingPhoto = ev.target.result;
+    var area = document.getElementById('photo-area');
+    area.innerHTML =
+      '<input type="file" accept="image/*" id="photo-input" onchange="handlePhoto(event)" />' +
+      '<img src="'+pendingPhoto+'" alt="preview" />' +
+      '<button class="remove-photo" onclick="removePhoto(event)" title="削除">✕</button>';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removePhoto(e) {
+  e.preventDefault(); e.stopPropagation();
+  pendingPhoto = null;
+  document.getElementById('photo-area').innerHTML =
+    '<input type="file" accept="image/*" id="photo-input" onchange="handlePhoto(event)" />' +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:24px;height:24px;color:var(--text3);"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
+    '<span>タップして追加</span>';
+}
+
+// ---------- Google Drive チーム共有 ----------
+var opQueue = Promise.resolve();
+var lastFocusSync = 0;
+
+function strippedSettings() {
+  var s = {};
+  for (var k in settings) {
+    if (k !== 'gasUrl' && k !== 'gasToken' && k !== 'lastBackup') s[k] = settings[k];
+  }
+  return s;
+}
+
+// 操作をひとつずつ順番に共有データへ反映する（応答の最新stateで画面も更新）
+function cloudOp(action, payload, silentOk) {
+  if (!cloudConfigured()) return Promise.resolve(null);
+  opQueue = opQueue.then(function() {
+    return fetch(settings.gasUrl, {
+      method: 'POST',
+      body: JSON.stringify(stripPhotos(Object.assign({ token: settings.gasToken, action: action }, payload || {})))
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      if (res && res.ok && res.state) {
+        applyState(res.state);
+      } else if (res && res.error === 'unauthorized') {
+        showToast('合言葉が一致しません。設定を確認してください');
+      } else if (res && res.error === 'busy') {
+        showToast('共有データが混み合っています。少し待って再操作してください');
+      } else if (res && res.error) {
+        showToast('共有エラー: ' + res.error);
+      }
+      return res;
+    }).catch(function() {
+      showToast('⚠ 共有データへの反映に失敗しました（オフライン？）。この端末には保存済みです');
+      return null;
+    });
+  });
+  return opQueue;
+}
+
+// 送信データから画像(photo)を除く（スプレッドシート版は画像を保存しないため通信を軽くする）
+function stripPhotos(payload) {
+  var p = Object.assign({}, payload);
+  function clean(arr) {
+    return (arr || []).map(function(o) {
+      var c = {}; for (var k in o) { if (k !== 'photo') c[k] = o[k]; } return c;
+    });
+  }
+  if (p.items) p.items = clean(p.items);
+  if (p.entries) p.entries = clean(p.entries);
+  if (p.item) { var ci = {}; for (var k in p.item) { if (k !== 'photo') ci[k] = p.item[k]; } p.item = ci; }
+  if (p.data) {
+    p.data = Object.assign({}, p.data);
+    if (p.data.items) p.data.items = clean(p.data.items);
+    if (p.data.history) p.data.history = clean(p.data.history);
+  }
+  return p;
+}
+
+// サーバーの最新stateをローカルに反映
+function applyState(state) {
+  // サーバー側は画像を持たないため、同じidの商品にローカルの画像を引き継ぐ
+  var photoMap = {};
+  items.forEach(function(i) { if (i.photo) photoMap[i.id] = i.photo; });
+  dispHistory.forEach(function(h) { if (h.photo) photoMap['h' + h.id + h.disposedAt] = h.photo; });
+
+  items = (state.items || []).map(function(i) {
+    if (!i.photo && photoMap[i.id]) i.photo = photoMap[i.id];
+    return i;
+  });
+  dispHistory = (state.history || []).map(function(h) {
+    var key = 'h' + h.id + h.disposedAt;
+    if (!h.photo && photoMap[key]) h.photo = photoMap[key];
+    return h;
+  });
+
+  if (state.settings) {
+    var keepUrl = settings.gasUrl, keepToken = settings.gasToken;
+    settings = Object.assign({ email: '', auto: 'manual', suppliers: [] }, state.settings);
+    settings.gasUrl = keepUrl;
+    settings.gasToken = keepToken;
+    settings.lastBackup = new Date().toISOString();
+    if (!Array.isArray(settings.suppliers)) settings.suppliers = [];
+  }
+  lsSet(DB_ITEMS, JSON.stringify(items));
+  lsSet(DB_HISTORY, JSON.stringify(dispHistory));
+  lsSet(DB_SETTINGS, JSON.stringify(settings));
+  var em = document.getElementById('in-email'); if (em) em.value = settings.email || '';
+  var au = document.getElementById('in-auto'); if (au) au.value = settings.auto || 'manual';
+  renderSuppliers();
+  refreshSupplierSelects();
+  renderAll();
+  renderCloudStatus();
+}
+
+function syncFromCloud(showResult) {
+  if (!cloudConfigured()) return Promise.resolve(null);
+  return cloudOp('load', null, true).then(function(res) {
+    if (res && res.ok && showResult) showToast('☁ 最新の共有データに更新しました ✓');
+    return res;
+  });
+}
+
+// 接続時：共有側にデータがあれば取得、空でこの端末にデータがあれば共有側へ登録
+function syncOrSeed() {
+  cloudRequest('load', null).then(function(res) {
+    if (!res || !res.ok) {
+      showToast(res && res.error === 'unauthorized' ? '合言葉が一致しません' : 'Driveに接続できませんでした。URLを確認してください');
+      return;
+    }
+    var st = res.state || {};
+    var serverHasData = (st.items && st.items.length) || (st.history && st.history.length) ||
+      (st.settings && st.settings.suppliers && st.settings.suppliers.length);
+    if (serverHasData) {
+      applyState(st);
+      showToast('☁ チームの共有データに接続しました ✓（商品' + items.length + '件）');
+    } else if (items.length || dispHistory.length) {
+      cloudRequest('save', cloudPayload()).then(function(res2) {
+        if (res2 && res2.ok) {
+          settings.lastBackup = res2.savedAt;
+          lsSet(DB_SETTINGS, JSON.stringify(settings));
+          renderCloudStatus();
+          showToast('☁ この端末のデータを共有データとして登録しました ✓');
+        } else {
+          showToast('共有データの初期化に失敗しました');
+        }
+      });
+    } else {
+      applyState(st);
+      showToast('☁ 接続しました（共有データはまだ空です）');
+    }
+  }).catch(function() {
+    showToast('Driveに接続できませんでした。URLを確認してください');
+  });
+}
+
+// ---------- Google Drive バックアップ ----------
+var backupTimer = null;
+var backupInFlight = false;
+
+function cloudConfigured() {
+  return !!(settings.gasUrl && settings.gasToken);
+}
+
+function saveCloudSettings() {
+  settings.gasUrl = document.getElementById('in-gas-url').value.trim();
+  settings.gasToken = document.getElementById('in-gas-token').value.trim();
+  lsSet(DB_SETTINGS, JSON.stringify(settings));
+  renderCloudStatus();
+  if (cloudConfigured()) {
+    showToast('共有設定を保存しました ✓ 接続しています...');
+    syncOrSeed();
+  } else {
+    showToast('共有設定を解除しました');
+  }
+}
+
+function cloudRequest(action, data) {
+  return fetch(settings.gasUrl, {
+    method: 'POST',
+    body: JSON.stringify({ token: settings.gasToken, action: action, data: data })
+  }).then(function(r) { return r.json(); });
+}
+
+function cloudPayload() {
+  // URLと合言葉はバックアップに含めない（復元時に上書きしないため）
+  var s = {};
+  for (var k in settings) {
+    if (k !== 'gasUrl' && k !== 'gasToken') s[k] = settings[k];
+  }
+  return { items: items, history: dispHistory, settings: s, savedAt: new Date().toISOString() };
+}
+
+function backupToCloud(silent) {
+  if (!cloudConfigured()) { if (!silent) showToast('先にURLと合言葉を設定してください'); return; }
+  if (backupInFlight) return;
+  backupInFlight = true;
+  var btn = document.getElementById('backup-btn');
+  if (btn) btn.disabled = true;
+  cloudRequest('save', cloudPayload()).then(function(res) {
+    backupInFlight = false;
+    if (btn) btn.disabled = false;
+    if (res && res.ok) {
+      settings.lastBackup = res.savedAt;
+      lsSet(DB_SETTINGS, JSON.stringify(settings));
+      renderCloudStatus();
+      showToast('☁ Driveにバックアップしました ✓');
+    } else if (res && res.error === 'unauthorized') {
+      showToast('合言葉が一致しません。スクリプトのTOKENを確認してください');
+    } else {
+      showToast('バックアップに失敗しました');
+    }
+  }).catch(function() {
+    backupInFlight = false;
+    if (btn) btn.disabled = false;
+    showToast('Driveに接続できませんでした。URLを確認してください');
+  });
+}
+
+function scheduleCloudBackup() {
+  if (!cloudConfigured()) return;
+  clearTimeout(backupTimer);
+  backupTimer = setTimeout(function() { backupToCloud(true); }, 3000);
+}
+
+function askRestore() {
+  if (!cloudConfigured()) { showToast('先にURLと合言葉を設定してください'); return; }
+  document.getElementById('restore-confirm').style.display = '';
+}
+
+function restoreFromCloud() {
+  document.getElementById('restore-confirm').style.display = 'none';
+  var btn = document.getElementById('restore-btn');
+  btn.disabled = true;
+  cloudRequest('load', null).then(function(res) {
+    btn.disabled = false;
+    if (!res || !res.ok) {
+      showToast(res && res.error === 'unauthorized' ? '合言葉が一致しません' : '復元に失敗しました');
+      return;
+    }
+    var st = res.state || res.data || {};
+    applyState(st);
+    showToast('☁ 共有データを取得しました ✓（商品' + items.length + '件）');
+  }).catch(function() {
+    btn.disabled = false;
+    showToast('Driveに接続できませんでした。URLを確認してください');
+  });
+}
+
+function renderCloudStatus() {
+  var el = document.getElementById('cloud-status');
+  if (!el) return;
+  if (cloudConfigured()) {
+    var last = settings.lastBackup ? new Date(settings.lastBackup).toLocaleString('ja-JP') : 'まだありません';
+    el.innerHTML = '<span class="status-pill" style="background:var(--green-bg);color:var(--green-text);display:inline-block;font-size:12px;padding:5px 12px;border-radius:20px;margin-bottom:10px;">● チーム共有 有効（自動同期ON）</span>' +
+      '<p style="font-size:11px;color:var(--text3);margin-bottom:10px;">最終同期: ' + last + '</p>';
+  } else {
+    el.innerHTML = '<span class="status-pill" style="background:var(--gray-bg);color:var(--gray-text);display:inline-block;font-size:12px;padding:5px 12px;border-radius:20px;margin-bottom:10px;">○ チーム共有 未設定</span>';
+  }
+}
+
+// ---------- 複数選択・一括処理 ----------
+var selectionMode = false;
+var selectedIds = {};
+
+function toggleSelectionMode() {
+  selectionMode = !selectionMode;
+  selectedIds = {};
+  var btn = document.getElementById('select-mode-btn');
+  btn.classList.toggle('active', selectionMode);
+  btn.textContent = selectionMode ? '✕ 選択をやめる' : '☑ 選択';
+  document.getElementById('bulk-bar').style.display = selectionMode ? '' : 'none';
+  updateBulkBar();
+  renderList();
+}
+
+function toggleSelect(id) {
+  if (selectedIds[id]) delete selectedIds[id];
+  else selectedIds[id] = true;
+  updateBulkBar();
+  renderList();
+}
+
+function selectAllVisible() {
+  (window._visibleIds || []).forEach(function(id) { selectedIds[id] = true; });
+  updateBulkBar();
+  renderList();
+}
+
+function clearSelection() {
+  selectedIds = {};
+  updateBulkBar();
+  renderList();
+}
+
+function updateBulkBar() {
+  var n = Object.keys(selectedIds).length;
+  var el = document.getElementById('bulk-count');
+  if (el) el.textContent = n + '件選択中';
+}
+
+function bulkProcess(type) {
+  var ids = Object.keys(selectedIds).map(Number);
+  if (!ids.length) { showToast('商品が選択されていません'); return; }
+  var count = 0;
+  var entries = [];
+  var doneIds = [];
+  ids.forEach(function(id) {
+    var item = null;
+    for (var i = 0; i < items.length; i++) { if (items[i].id === id) { item = items[i]; break; } }
+    if (!item) return;
+    if (type === 'sale' || type === 'dispose') {
+      var entry = {
+        id: item.id,
+        name: item.name,
+        expiry: item.expiry,
+        remind: item.remind,
+        photo: item.photo,
+        supplier: item.supplier || '',
+        createdAt: getCreatedAt(item),
+        type: type,
+        disposedAt: new Date().toISOString(),
+        daysLeft: getDaysLeft(item.expiry)
+      };
+      dispHistory.unshift(entry);
+      entries.push(entry);
+    }
+    items = items.filter(function(i) { return i.id !== id; });
+    doneIds.push(id);
+    count++;
+  });
+  if (dispHistory.length > 200) dispHistory = dispHistory.slice(0, 200);
+  save();
+  if (doneIds.length) {
+    if (type === 'delete') cloudOp('deleteItems', { ids: doneIds });
+    else cloudOp('process', { ids: doneIds, entries: entries });
+  }
+  selectedIds = {};
+  selectionMode = false;
+  var btn = document.getElementById('select-mode-btn');
+  btn.classList.remove('active');
+  btn.textContent = '☑ 選択';
+  document.getElementById('bulk-bar').style.display = 'none';
+  var label = type === 'sale' ? '売上として記録' : type === 'dispose' ? '廃棄として記録' : '削除';
+  showToast(count + '件を' + label + 'しました ✓');
+  renderAll();
+}
+
+// ---------- 仕入れ先カテゴリ ----------
+function saveSuppliers() {
+  lsSet(DB_SETTINGS, JSON.stringify(settings));
+  cloudOp('saveSettings', { settings: strippedSettings() });
+}
+
+// 仕入れ先ごとの通知ON/OFF（デフォルトON）。キー '' は「未設定」カテゴリ
+function notifyEnabled(supplier) {
+  var m = settings.supplierNotify || {};
+  return m[supplier || ''] !== false;
+}
+
+function toggleSupplierNotify(key) {
+  if (!settings.supplierNotify) settings.supplierNotify = {};
+  settings.supplierNotify[key] = !notifyEnabled(key);
+  saveSuppliers();
+  renderSuppliers();
+  var label = key === '' ? '未設定' : key;
+  showToast('「' + label + '」の通知を' + (notifyEnabled(key) ? 'ON' : 'OFF') + 'にしました');
+}
+
+function renderSuppliers() {
+  var el = document.getElementById('supplier-list');
+  if (!el) return;
+  var inputStyle = 'flex:1;height:34px;border:0.5px solid var(--border2);border-radius:8px;padding:0 10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;';
+
+  function bellBtn(key) {
+    var on = notifyEnabled(key);
+    return '<button class="del-btn" onclick="toggleSupplierNotify(\'' + escHtml(key).replace(/'/g, "\\'") + '\')" title="メール通知 ' + (on ? 'ON' : 'OFF') + '" style="font-size:15px;' + (on ? 'color:var(--green-text);' : 'color:var(--text3);opacity:0.6;') + '">' + (on ? '🔔' : '🔕') + '</button>';
+  }
+
+  // 未設定カテゴリの通知トグル（固定行）
+  var html = '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;padding:0 2px;">' +
+    '<span style="font-size:12px;color:var(--text3);flex-shrink:0;">🏷</span>' +
+    '<span style="flex:1;font-size:13px;color:var(--text2);">未設定（仕入れ先なし）</span>' +
+    bellBtn('') +
+  '</div>';
+
+  if (!settings.suppliers.length) {
+    el.innerHTML = html + '<p style="font-size:12px;color:var(--text3);">仕入れ先はまだ登録されていません</p>';
+    return;
+  }
+  html += settings.suppliers.map(function(s, idx) {
+    return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">' +
+      '<span style="font-size:12px;color:var(--text3);flex-shrink:0;">🏷</span>' +
+      '<input type="text" value="' + escHtml(s) + '" onchange="renameSupplier(' + idx + ',this.value)" style="' + inputStyle + '" />' +
+      bellBtn(s) +
+      '<button class="del-btn" onclick="removeSupplier(' + idx + ')" title="削除">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>' +
+      '</button>' +
+    '</div>';
+  }).join('');
+  el.innerHTML = html + '<p style="font-size:11px;color:var(--text3);margin-top:6px;">🔔=メール通知ON / 🔕=OFF。OFFのカテゴリの商品は通知メールに含まれません。</p>';
+}
+
+function addSupplier() {
+  var input = document.getElementById('new-supplier');
+  var name = input.value.trim();
+  if (!name) { showToast('仕入れ先名を入力してください'); return; }
+  if (settings.suppliers.indexOf(name) >= 0) { showToast('同じ名前の仕入れ先が既にあります'); return; }
+  settings.suppliers.push(name);
+  saveSuppliers();
+  input.value = '';
+  renderSuppliers();
+  refreshSupplierSelects();
+  showToast('仕入れ先「' + name + '」を追加しました ✓');
+}
+
+function renameSupplier(idx, newName) {
+  newName = newName.trim();
+  var oldName = settings.suppliers[idx];
+  if (!newName || newName === oldName) { renderSuppliers(); return; }
+  if (settings.suppliers.indexOf(newName) >= 0) { showToast('同じ名前の仕入れ先が既にあります'); renderSuppliers(); return; }
+  settings.suppliers[idx] = newName;
+  // 既存商品・履歴の仕入れ先も追従して更新
+  items.forEach(function(i) { if (i.supplier === oldName) i.supplier = newName; });
+  dispHistory.forEach(function(h) { if (h.supplier === oldName) h.supplier = newName; });
+  // 通知設定も引き継ぐ
+  if (settings.supplierNotify && oldName in settings.supplierNotify) {
+    settings.supplierNotify[newName] = settings.supplierNotify[oldName];
+    delete settings.supplierNotify[oldName];
+  }
+  lsSet(DB_SETTINGS, JSON.stringify(settings));
+  save();
+  cloudOp('renameSupplier', { oldName: oldName, newName: newName });
+  renderAll();
+  renderSuppliers();
+  refreshSupplierSelects();
+  showToast('「' + oldName + '」を「' + newName + '」に変更しました ✓');
+}
+
+function removeSupplier(idx) {
+  var name = settings.suppliers[idx];
+  settings.suppliers.splice(idx, 1);
+  // 商品側は「未設定」に戻す（履歴は記録として残す）
+  items.forEach(function(i) { if (i.supplier === name) i.supplier = ''; });
+  if (settings.supplierNotify) delete settings.supplierNotify[name];
+  lsSet(DB_SETTINGS, JSON.stringify(settings));
+  save();
+  cloudOp('removeSupplier', { name: name });
+  renderAll();
+  renderSuppliers();
+  refreshSupplierSelects();
+  showToast('仕入れ先「' + name + '」を削除しました');
+}
+
+function refreshSupplierSelects() {
+  var opts = '<option value="">未設定</option>' + settings.suppliers.map(function(s) {
+    return '<option value="' + escHtml(s) + '">' + escHtml(s) + '</option>';
+  }).join('');
+  var sel = document.getElementById('in-supplier');
+  if (sel) { var v = sel.value; sel.innerHTML = opts; sel.value = v; }
+  var fsel = document.getElementById('filter-supplier');
+  if (fsel) {
+    var fv = fsel.value;
+    fsel.innerHTML = '<option value="__all__">仕入れ先: すべて</option><option value="">未設定のみ</option>' + settings.suppliers.map(function(s) {
+      return '<option value="' + escHtml(s) + '">' + escHtml(s) + '</option>';
+    }).join('');
+    fsel.value = fv || '__all__';
+    if (fsel.selectedIndex < 0) fsel.value = '__all__';
+  }
+  var psel = document.getElementById('pdf-supplier');
+  if (psel) { var pv = psel.value; psel.innerHTML = opts; psel.value = pv; }
+}
+
+
+var parsedItems = [];
+
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+var pdfTextCount = 0;
+
+function handlePdfUpload(e) {
+  var file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  if (!window.pdfjsLib) {
+    showToast('PDF解析ライブラリを読み込めませんでした。インターネット接続を確認してください');
+    return;
+  }
+  var statusEl = document.getElementById('pdf-status');
+  statusEl.textContent = '解析中...';
+  parsedItems = [];
+  pdfTextCount = 0;
+
+  file.arrayBuffer().then(function(buf) {
+    return pdfjsLib.getDocument({ data: buf }).promise;
+  }).then(function(pdf) {
+    var chain = Promise.resolve();
+    for (var p = 1; p <= pdf.numPages; p++) {
+      (function(pageNum) {
+        chain = chain.then(function() {
+          return pdf.getPage(pageNum).then(parsePdfPage);
+        });
+      })(p);
+    }
+    return chain;
+  }).then(function() {
+    renderPdfPreview();
+    if (parsedItems.length) {
+      var noDate = parsedItems.filter(function(p) { return !p.expiry; }).length;
+      var msg = parsedItems.length + '種類の商品を検出しました。内容を確認して登録してください。';
+      if (noDate > 0) msg += '（' + noDate + '件は期限を読み取れなかったため、日付の入力が必要です）';
+      statusEl.textContent = msg;
+    } else if (pdfTextCount === 0) {
+      statusEl.textContent = '文字を検出できませんでした。PDFの画質が低い可能性があります。';
+    } else {
+      statusEl.textContent = 'テキストは検出されましたが、商品情報の形式を認識できませんでした。';
+      console.log('--- PDF解析デバッグ: 検出した行 ---');
+      console.log(window._pdfDebugLines || []);
+    }
+  }).catch(function(err) {
+    var msg = err && err.message ? err.message : String(err);
+    // OCRの読み込みに失敗した場合（file://制限・ネットワーク等）は手動入力を案内
+    if (/network|fetch|worker|traineddata|load|importScripts/i.test(msg)) {
+      statusEl.innerHTML = 'この画像PDFの自動読み取り（OCR）を起動できませんでした。<br>' +
+        '下の「商品情報」から手動で登録するか、テキスト形式のPDFをお使いください。' +
+        '<br><span style="color:var(--text3);">詳細: ' + escHtml(msg) + '</span>';
+      showToast('OCRを起動できませんでした。手動で登録してください');
+    } else {
+      statusEl.textContent = '';
+      showToast('PDFの解析に失敗しました: ' + msg);
+    }
+    ocrWorkerPromise = null;
+  });
+}
+
+var ocrWorkerPromise = null;
+
+function getOcrWorker() {
+  if (!window.Tesseract) return Promise.reject(new Error('OCRライブラリを読み込めませんでした'));
+  if (!ocrWorkerPromise) {
+    var statusEl = document.getElementById('pdf-status');
+    // 実在が確認できている辞書ファイル（バージョン固定）。先頭から順に取得を試す
+    var gzCandidates = [
+      'https://cdn.jsdelivr.net/npm/@tesseract.js-data/jpn@1.0.0/4.0.0_best_int/jpn.traineddata.gz',
+      'https://cdn.jsdelivr.net/npm/@tesseract.js-data/jpn@1.0.0/4.0.0/jpn.traineddata.gz',
+      'https://unpkg.com/@tesseract.js-data/jpn@1.0.0/4.0.0_best_int/jpn.traineddata.gz'
+    ];
+
+    ocrWorkerPromise = fetchFirstOk(gzCandidates).then(function(blobUrl) {
+      // 辞書を gzip 解凍前の .gz として cachePath 不使用でローカル供給するため、
+      // langPath にBlobのベースを渡せないので、取得済みBlobをTesseractのFSへ直接書く方式を取る
+      return Tesseract.createWorker('jpn', 1, {
+        // ワーカー本体とコアはCDN固定（file://でも動くよう明示）
+        workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
+        corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
+        langPath: blobUrl.base,
+        logger: function(m) {
+          if (m.status === 'recognizing text') {
+            statusEl.textContent = '画像PDFのため文字認識中... ' + Math.round(m.progress * 100) + '%';
+          } else if (m.status === 'loading language traineddata' || m.status === 'loading tesseract core' || m.status === 'initializing tesseract') {
+            statusEl.textContent = 'OCRの準備中（初回は辞書のダウンロードに少し時間がかかります）...';
+          }
+        }
+      });
+    });
+  }
+  return ocrWorkerPromise;
+}
+
+// 候補URLを順に試し、最初に成功した辞書のベースパスを返す
+// （Tesseractは langPath + '/' + lang + '.traineddata.gz' を取りに行くため、
+//   実在を確認できたURLの「ディレクトリ部分」を langPath として渡す）
+function fetchFirstOk(urls) {
+  var i = 0;
+  function tryNext() {
+    if (i >= urls.length) return Promise.reject(new Error('辞書ファイルを取得できませんでした (network/404)'));
+    var url = urls[i++];
+    return fetch(url, { method: 'GET', mode: 'cors' }).then(function(r) {
+      if (!r.ok) return tryNext();
+      // 成功：このURLのディレクトリ部分をbaseとして返す
+      var base = url.replace(/\/jpn\.traineddata\.gz$/, '');
+      return { base: base };
+    }).catch(function() { return tryNext(); });
+  }
+  return tryNext();
+}
+
+// OCRの定番誤認識を補正
+function normalizeOcrText(s) {
+  return s.replace(/昌/g, '日').replace(/其限/g, '期限').replace(/征/g, '年');
+}
+
+function parsePdfPage(page) {
+  // まずテキストの有無を確認してから描画解像度を決める
+  return page.getTextContent().then(function(tc) {
+    var vp1 = page.getViewport({ scale: 1 });
+    var rawTexts = tc.items.filter(function(it) { return it.str.trim() !== ''; });
+    var isTextPdf = rawTexts.length > 3;
+    // テキストPDFは等倍×2で十分。画像PDFは元画像の解像度を活かすため高解像度で描画
+    var scale = isTextPdf ? 2 : Math.min(4, Math.max(2.5, 2300 / vp1.width));
+    var viewport = page.getViewport({ scale: scale });
+    var canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    return page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise.then(function() {
+      if (isTextPdf) {
+        var texts = tc.items.map(function(it) {
+          var tr = pdfjsLib.Util.transform(viewport.transform, it.transform);
+          return { str: it.str, x: tr[4], y: tr[5] };
+        }).filter(function(t) { return t.str.trim() !== ''; });
+        pdfTextCount += texts.length;
+        var lines = groupTextLines(texts);
+        extractProductsFromLines(lines, canvas);
+        return;
+      }
+
+      // 画像のみのPDF → OCR
+      // 前処理：左端の商品画像カラムを白塗りしてOCRの誤認識を防ぐ
+      // （商品画像の切り出しには元のcanvasをそのまま使う）
+      var ocrCanvas = document.createElement('canvas');
+      ocrCanvas.width = canvas.width;
+      ocrCanvas.height = canvas.height;
+      var octx = ocrCanvas.getContext('2d');
+      octx.drawImage(canvas, 0, 0);
+      octx.fillStyle = '#ffffff';
+      octx.fillRect(0, 0, Math.round(canvas.width * 0.11), canvas.height);
+
+      return getOcrWorker().then(function(worker) {
+        return worker.recognize(ocrCanvas);
+      }).then(function(res) {
+        var lines = (res.data.lines || []).map(function(l) {
+          return {
+            y: (l.bbox.y0 + l.bbox.y1) / 2,
+            parts: (l.words || []).map(function(w) { return { str: w.text, x: w.bbox.x0 }; }),
+            text: l.text || ''
+          };
+        }).filter(function(l) { return l.text.trim() !== ''; });
+        pdfTextCount += lines.length;
+        lines.sort(function(a, b) { return a.y - b.y; });
+        lines.forEach(function(l) { l.stripped = normalizeOcrText(l.text.replace(/\s+/g, '')); });
+        window._pdfDebugLines = lines.map(function(l) { return Math.round(l.y) + ': ' + l.stripped; });
+        extractProductsFromLines(lines, canvas);
+      });
+    });
+  });
+}
+
+function groupTextLines(texts) {
+  texts.sort(function(a, b) { return a.y - b.y || a.x - b.x; });
+  var lines = [];
+  texts.forEach(function(t) {
+    var ln = lines.length ? lines[lines.length - 1] : null;
+    if (ln && Math.abs(ln.y - t.y) < 10) { ln.parts.push(t); }
+    else lines.push({ y: t.y, parts: [t] });
+  });
+  lines.forEach(function(ln) {
+    ln.parts.sort(function(a, b) { return a.x - b.x; });
+    ln.text = ln.parts.map(function(p) { return p.str; }).join(' ');
+    ln.stripped = ln.text.replace(/\s+/g, '');
+  });
+  window._pdfDebugLines = lines.map(function(l) { return Math.round(l.y) + ': ' + l.stripped; });
+  return lines;
+}
+
+// テキスト行から商品を抽出する共通パーサー
+// 「期限日付の行」を区切りに、その間をひとつの商品ブロックとして扱う
+function extractProductsFromLines(lines, canvas) {
+  var headerRe = /商品名|商品画像|購入価格|お届け個数|お届け情報/;
+  var dateFull = /(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/;
+  var expKw = /期限|賞味|消費/;
+
+  var dateIdx = [];
+  for (var i = 0; i < lines.length; i++) {
+    var s = lines[i].stripped;
+    if (headerRe.test(s)) continue;
+    // 完全な日付がある行、またはOCRで日付が欠けても期限キーワード＋年がある行
+    if (dateFull.test(s) || (expKw.test(s) && /\d{4}年/.test(s))) dateIdx.push(i);
+  }
+
+  var prevDateLineIdx = -1;
+  var prevBottom = 0;
+
+  dateIdx.forEach(function(di) {
+    var dateLn = lines[di];
+    var dm = dateLn.stripped.match(dateFull);
+    var expiry = dm ? dm[1] + '-' + ('0' + dm[2]).slice(-2) + '-' + ('0' + dm[3]).slice(-2) : '';
+
+    var qty = 1;
+    var nameStr = '';
+    var nameLnY = null, nameMinX = null;
+
+    for (var j = prevDateLineIdx + 1; j <= di; j++) {
+      var ln = lines[j];
+      if (headerRe.test(ln.stripped)) continue;
+      var qm = ln.stripped.match(/(\d+)個/);
+      if (qm) qty = Math.max(1, parseInt(qm[1]));
+      if (j === di) continue; // 日付行のテキストは商品名に含めない
+      var part = ln.stripped
+        .replace(/[\d,，]+円/g, '')
+        .replace(/\d+個/g, '');
+      if (part) {
+        nameStr += part;
+        if (nameLnY === null) nameLnY = ln.y;
+        ln.parts.forEach(function(p) {
+          if (nameMinX === null || p.x < nameMinX) nameMinX = p.x;
+        });
+      }
+    }
+    prevDateLineIdx = di;
+    var name = nameStr.trim();
+    if (!name) return;
+
+    // 商品画像：ブロックの左端カラムを切り出して余白をトリム
+    var topY = (nameLnY !== null ? nameLnY : dateLn.y - 60) - 40;
+    var top = Math.max(prevBottom + 6, topY, 0);
+    var bottom = Math.min(canvas.height, dateLn.y + 35);
+    prevBottom = bottom;
+    var colW = (nameMinX !== null && nameMinX > 60) ? nameMinX - 20 : canvas.width * 0.16;
+    var photo = cropPhotoFromCanvas(canvas, 0, top, colW, bottom - top);
+
+    parsedItems.push({ name: name, expiry: expiry, qty: qty, photo: photo });
+  });
+}
+
+function cropPhotoFromCanvas(srcCanvas, x, y, w, h) {
+  try {
+    w = Math.floor(w); h = Math.floor(h); x = Math.floor(x); y = Math.floor(Math.max(0, y));
+    if (w < 20 || h < 20) return null;
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    var ctx = c.getContext('2d');
+    ctx.drawImage(srcCanvas, x, y, w, h, 0, 0, w, h);
+    var data = ctx.getImageData(0, 0, w, h).data;
+    var minX = w, minY = h, maxX = 0, maxY = 0, found = false;
+    for (var yy = 4; yy < h - 4; yy += 2) {
+      for (var xx = 2; xx < w - 2; xx += 2) {
+        var k = (yy * w + xx) * 4;
+        if (data[k] < 235 || data[k+1] < 235 || data[k+2] < 235) {
+          found = true;
+          if (xx < minX) minX = xx;
+          if (xx > maxX) maxX = xx;
+          if (yy < minY) minY = yy;
+          if (yy > maxY) maxY = yy;
+        }
+      }
+    }
+    if (!found || maxX - minX < 12 || maxY - minY < 12) return null;
+    var cw = maxX - minX + 6, ch = maxY - minY + 6;
+    var sx = Math.max(0, minX - 3), sy = Math.max(0, minY - 3);
+    var s = Math.min(1, 200 / Math.max(cw, ch));
+    var out = document.createElement('canvas');
+    out.width = Math.round(cw * s); out.height = Math.round(ch * s);
+    out.getContext('2d').drawImage(c, sx, sy, cw, ch, 0, 0, out.width, out.height);
+    return out.toDataURL('image/jpeg', 0.75);
+  } catch (e) { return null; }
+}
+
+function renderPdfPreview() {
+  var el = document.getElementById('pdf-preview');
+  if (!parsedItems.length) { el.innerHTML = ''; return; }
+  var total = parsedItems.reduce(function(s, p) { return s + p.qty; }, 0);
+  var inputStyle = 'height:32px;border:0.5px solid var(--border2);border-radius:8px;padding:0 8px;font-size:13px;background:var(--bg);color:var(--text);outline:none;';
+  el.innerHTML = parsedItems.map(function(p, idx) {
+    var thumb = p.photo
+      ? '<div class="thumb"><img src="' + p.photo + '" alt="" /></div>'
+      : '<div class="thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:22px;height:22px;color:var(--text3);"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></div>';
+    var dateStyle = p.expiry ? '' : 'border-color:var(--red-text);';
+    return '<div class="item-card"' + (p.expiry ? '' : ' style="border-color:var(--red-text);"') + '>' +
+      thumb +
+      '<div class="item-info">' +
+        '<input type="text" value="' + escHtml(p.name) + '" oninput="updParsed(' + idx + ',\'name\',this.value)" style="' + inputStyle + 'width:100%;" />' +
+        '<div style="display:flex;gap:6px;margin-top:6px;align-items:center;">' +
+          '<input type="date" value="' + p.expiry + '" oninput="updParsed(' + idx + ',\'expiry\',this.value)" style="' + inputStyle + dateStyle + 'flex:1;min-width:0;" />' +
+          '<input type="number" min="1" value="' + p.qty + '" oninput="updParsed(' + idx + ',\'qty\',this.value)" style="' + inputStyle + 'width:56px;" />' +
+          '<span style="font-size:12px;color:var(--text2);">個</span>' +
+        '</div>' +
+        (p.expiry ? '' : '<div style="font-size:11px;color:var(--red-text);margin-top:4px;">⚠ 期限を読み取れませんでした。日付を入力してください</div>') +
+      '</div>' +
+      '<button class="del-btn" onclick="removeParsed(' + idx + ')" title="この商品を除外">✕</button>' +
+    '</div>';
+  }).join('') +
+  '<div style="display:flex;align-items:center;gap:8px;margin:10px 0;">' +
+    '<span style="font-size:12px;color:var(--text2);flex-shrink:0;">🏷 仕入れ先（まとめて設定）:</span>' +
+    '<select id="pdf-supplier" style="flex:1;height:34px;border:0.5px solid var(--border2);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);padding:0 8px;outline:none;"></select>' +
+  '</div>' +
+  '<button class="primary-btn" id="bulk-btn" onclick="registerParsed()">📥 合計 ' + total + ' 件を一括登録</button>';
+  refreshSupplierSelects();
+}
+
+function updParsed(idx, key, val) {
+  if (!parsedItems[idx]) return;
+  if (key === 'qty') {
+    parsedItems[idx].qty = Math.max(1, parseInt(val) || 1);
+    var total = parsedItems.reduce(function(s, p) { return s + p.qty; }, 0);
+    var btn = document.getElementById('bulk-btn');
+    if (btn) btn.textContent = '📥 合計 ' + total + ' 件を一括登録';
+  } else {
+    parsedItems[idx][key] = val;
+  }
+}
+
+function removeParsed(idx) {
+  parsedItems.splice(idx, 1);
+  renderPdfPreview();
+}
+
+function registerParsed() {
+  var valid = parsedItems.filter(function(p) { return p.name.trim() && p.expiry; });
+  if (!valid.length) { showToast('登録できる商品がありません'); return; }
+  var psel = document.getElementById('pdf-supplier');
+  var supplier = psel ? psel.value : '';
+  var baseId = Date.now();
+  var count = 0;
+  var created = [];
+  valid.forEach(function(p) {
+    for (var q = 0; q < p.qty; q++) {
+      var ni = {
+        id: baseId + count,
+        name: p.name.trim(),
+        expiry: p.expiry,
+        remind: 3,
+        supplier: supplier,
+        createdAt: todayStr(),
+        photo: p.photo
+      };
+      items.push(ni);
+      created.push(ni);
+      count++;
+    }
+  });
+  save();
+  if (created.length) cloudOp('addItems', { items: created });
+  parsedItems = [];
+  renderPdfPreview();
+  document.getElementById('pdf-status').textContent = '';
+  showToast(count + '件を登録しました ✓');
+  renderAll();
+  switchTab('list');
+}
+
+var editingId = null;
+
+function startEdit(id) {
+  var item = null;
+  for (var i=0; i<items.length; i++) { if (items[i].id===id) { item=items[i]; break; } }
+  if (!item) return;
+  editingId = id;
+  document.getElementById('in-name').value = item.name;
+  document.getElementById('in-expiry').value = item.expiry;
+  document.getElementById('in-remind').value = item.remind;
+  document.getElementById('in-supplier').value = item.supplier || '';
+  document.getElementById('in-created').value = getCreatedAt(item) || todayStr();
+  pendingPhoto = item.photo || null;
+  if (item.photo) {
+    document.getElementById('photo-area').innerHTML =
+      '<input type="file" accept="image/*" id="photo-input" onchange="handlePhoto(event)" />' +
+      '<img src="'+item.photo+'" alt="preview" />' +
+      '<button class="remove-photo" onclick="removePhoto(event)" title="削除">✕</button>';
+  } else {
+    removePhoto({ preventDefault:function(){}, stopPropagation:function(){} });
+  }
+  updateAddTabUI();
+  switchTab('add');
+}
+
+function cancelEdit() {
+  editingId = null;
+  pendingPhoto = null;
+  document.getElementById('in-name').value = '';
+  removePhoto({ preventDefault:function(){}, stopPropagation:function(){} });
+  var d = new Date(); d.setDate(d.getDate()+7);
+  document.getElementById('in-expiry').value = d.toISOString().split('T')[0];
+  document.getElementById('in-remind').value = 3;
+  document.getElementById('in-created').value = todayStr();
+  updateAddTabUI();
+  switchTab('list');
+}
+
+function updateAddTabUI() {
+  var btn = document.getElementById('submit-btn');
+  var label = document.getElementById('add-tab-label');
+  var cancelBtn = document.getElementById('cancel-edit-btn');
+  if (editingId) {
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;margin-right:6px;vertical-align:-3px;"><polyline points="20 6 9 17 4 12"/></svg>更新する';
+    if (label) label.textContent = '商品情報の編集';
+    if (cancelBtn) cancelBtn.style.display = '';
+  } else {
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;margin-right:6px;vertical-align:-3px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>登録する';
+    if (label) label.textContent = '商品情報';
+    if (cancelBtn) cancelBtn.style.display = 'none';
+  }
+}
+
+function addItem() {
+  var name = document.getElementById('in-name').value.trim();
+  var expiry = document.getElementById('in-expiry').value;
+  var remind = parseInt(document.getElementById('in-remind').value);
+  var supplier = document.getElementById('in-supplier').value;
+  var createdAt = document.getElementById('in-created').value || todayStr();
+  if (!name) { showToast('商品名を入力してください'); return; }
+  if (!expiry) { showToast('賞味期限を入力してください'); return; }
+
+  if (editingId) {
+    // 編集モード：既存アイテムを更新
+    var updated = null;
+    for (var i=0; i<items.length; i++) {
+      if (items[i].id === editingId) {
+        items[i].name = name;
+        items[i].expiry = expiry;
+        items[i].remind = remind;
+        items[i].supplier = supplier;
+        items[i].createdAt = createdAt;
+        items[i].photo = pendingPhoto;
+        updated = items[i];
+        break;
+      }
+    }
+    editingId = null;
+    save();
+    if (updated) cloudOp('updateItem', { item: updated });
+    showToast('更新しました ✓');
+  } else {
+    // 新規登録
+    var newItem = { id: Date.now(), name: name, expiry: expiry, remind: remind, supplier: supplier, createdAt: createdAt, photo: pendingPhoto };
+    items.push(newItem);
+    save();
+    cloudOp('addItems', { items: [newItem] });
+    showToast('登録しました ✓');
+  }
+
+  pendingPhoto = null;
+  document.getElementById('in-name').value = '';
+  removePhoto({ preventDefault:function(){}, stopPropagation:function(){} });
+  var d = new Date(); d.setDate(d.getDate()+7);
+  document.getElementById('in-expiry').value = d.toISOString().split('T')[0];
+  document.getElementById('in-remind').value = 3;
+  document.getElementById('in-created').value = todayStr();
+  updateAddTabUI();
+  switchTab('list');
+}
+
+function runCheck() {
+  var targets = items.filter(function(i){
+    if (!notifyEnabled(i.supplier)) return false;
+    var d = getDaysLeft(i.expiry);
+    return d >= 0 && d <= i.remind;
+  });
+  var now = new Date().toISOString();
+  lsSet(DB_LASTCHECK, now);
+  lsSet(DB_LASTCHECK+'-date', new Date().toDateString());
+  document.getElementById('last-check-text').textContent = '最終チェック: ' + new Date(now).toLocaleString('ja-JP');
+  if (!targets.length) { showToast('リマインド対象の商品はありません'); return; }
+  openNotifyModal(targets);
+}
+
+function autoCheck() {
+  var targets = items.filter(function(i){
+    if (!notifyEnabled(i.supplier)) return false;
+    var d = getDaysLeft(i.expiry);
+    return d >= 0 && d <= i.remind;
+  });
+  lsSet(DB_LASTCHECK+'-date', new Date().toDateString());
+  if (targets.length > 0) openNotifyModal(targets);
+}
+
+function openNotifyModal(targets) {
+  notifyTargets = targets;
+  var email = settings.email || '';
+  document.getElementById('modal-items').innerHTML = targets.map(function(i){
+    var d = getDaysLeft(i.expiry);
+    return '<div class="modal-item">📦 <strong>'+escHtml(i.name)+'</strong> — あと'+d+'日 ('+i.expiry+')'+(i.supplier ? ' <span style="font-size:11px;color:var(--blue-text);">🏷 '+escHtml(i.supplier)+'</span>' : '')+'</div>';
+  }).join('');
+  document.getElementById('modal-email-row').innerHTML = email
+    ? '<p style="font-size:12px;color:var(--text2);">送信先: <strong>'+escHtml(email)+'</strong></p>'
+    : '<div class="form-group" style="margin-bottom:0;"><label style="font-size:12px;">送信先メールアドレス</label><input type="email" id="modal-email-input" placeholder="your@email.com" style="height:36px;width:100%;border:0.5px solid var(--border2);border-radius:8px;padding:0 10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;" /></div>';
+  document.getElementById('notify-modal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('notify-modal').classList.remove('show');
+}
+
+function sendEmail() {
+  var emailEl = document.getElementById('modal-email-input');
+  var email = settings.email || (emailEl ? emailEl.value.trim() : '');
+  if (!email) { showToast('メールアドレスを入力してください'); return; }
+  if (email.indexOf('@') < 0) { showToast('正しいメールアドレスを入力してください'); return; }
+  var subjectRaw = '【賞味期限アラート】まもなく期限の商品があります';
+  var bodyRaw = '賞味期限リマインダーからのお知らせです。\n\n以下の商品の賞味期限が近づいています。\n\n' +
+    notifyTargets.map(function(i){ return '・'+i.name+'（期限: '+i.expiry+'、あと'+getDaysLeft(i.expiry)+'日）'; }).join('\n') +
+    '\n\n早めにご確認ください。\n\n賞味期限リマインダー';
+  var mailtoUrl = 'mailto:'+email+'?subject='+encodeURIComponent(subjectRaw)+'&body='+encodeURIComponent(bodyRaw);
+
+  var a = document.createElement('a');
+  a.href = mailtoUrl;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  var copyText = '宛先: '+email+'\n件名: '+subjectRaw+'\n\n'+bodyRaw;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(copyText).then(function(){
+      showToast('メールアプリを起動しました（本文もコピー済み）✓');
+    }).catch(function(){
+      showToast('メールアプリを起動しました ✓');
+    });
+  } else {
+    showToast('メールアプリを起動しました ✓');
+  }
+  closeModal();
+}
+
+function exportData() {
+  var data = { items: items, history: dispHistory, settings: settings, exportedAt: new Date().toISOString() };
+  var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'expiry-reminder-'+new Date().toISOString().split('T')[0]+'.json';
+  a.click();
+  showToast('エクスポートしました ✓');
+}
+
+function importData(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      var data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data.items)) throw new Error();
+      var existingIds = {};
+      items.forEach(function(i){ existingIds[i.id]=true; });
+      var newItems = data.items.filter(function(i){ return !existingIds[i.id]; });
+      items = items.concat(newItems);
+      if (data.history && Array.isArray(data.history)) {
+        var existingHIds = {};
+        dispHistory.forEach(function(h){ existingHIds[h.id+'_'+h.disposedAt]=true; });
+        var newH = data.history.filter(function(h){ return !existingHIds[h.id+'_'+h.disposedAt]; });
+        dispHistory = dispHistory.concat(newH);
+      }
+      save();
+      renderAll();
+      showToast(newItems.length+'件インポートしました ✓');
+    } catch(err) {
+      showToast('インポートに失敗しました');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function switchTab(name) {
+  ['list','add','history','settings'].forEach(function(t){
+    document.getElementById('tab-'+t).style.display = t===name ? '' : 'none';
+    document.getElementById('tab-btn-'+t).classList.toggle('active', t===name);
+  });
+  if (name==='list') renderAll();
+  if (name==='history') renderHistory();
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function(){ t.classList.remove('show'); }, 2600);
+}
+
+document.getElementById('notify-modal').addEventListener('click', function(e){
+  if (e.target === e.currentTarget) closeModal();
+});
+
+// タブに戻ってきたとき、共有データの最新状態を取得（15秒に1回まで）
+window.addEventListener('focus', function() {
+  if (!cloudConfigured()) return;
+  var now = Date.now();
+  if (now - lastFocusSync < 15000) return;
+  lastFocusSync = now;
+  syncFromCloud(false);
+});
+
+load();
+</script>
+</body>
+</html>

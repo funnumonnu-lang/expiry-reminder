@@ -1,0 +1,15 @@
+# OSの生成ファイル
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# エディタ
+.vscode/
+.idea/
+
+# 一時ファイル
+*.tmp
+*.log
+
+# Claude Code
+.claude/
