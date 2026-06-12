@@ -230,6 +230,8 @@ function readSheet(sheet, cols) {
       var v = row[idx];
       if (c === 'id' || c === 'remind' || c === 'daysLeft') {
         obj[c] = (v === '' ? '' : Number(v));
+      } else if (v instanceof Date) {
+        obj[c] = Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
       } else {
         obj[c] = (v === '' ? '' : String(v));
       }
