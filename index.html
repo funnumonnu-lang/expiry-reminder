@@ -1675,7 +1675,7 @@ function openNotifyModal(targets) {
   var email = settings.email || '';
   document.getElementById('modal-items').innerHTML = targets.map(function(i){
     var d = getDaysLeft(i.expiry);
-    return '<div class="modal-item">📦 <strong>'+escHtml(i.name)+'</strong> — あと'+d+'日 ('+i.expiry+')'+(i.supplier ? ' <span style="font-size:11px;color:var(--blue-text);">🏷 '+escHtml(i.supplier)+'</span>' : '')+'</div>';
+    return '<div class="modal-item">📦 <strong>'+escHtml(i.name)+'</strong> — あと'+d+'日 ('+i.expiry.replace(/-/g,'/')+')'+(i.supplier ? ' <span style="font-size:11px;color:var(--blue-text);">🏷 '+escHtml(i.supplier)+'</span>' : '')+'</div>';
   }).join('');
   document.getElementById('modal-email-row').innerHTML = email
     ? '<p style="font-size:12px;color:var(--text2);">送信先: <strong>'+escHtml(email)+'</strong></p>'
@@ -1694,7 +1694,7 @@ function sendEmail() {
   if (email.indexOf('@') < 0) { showToast('正しいメールアドレスを入力してください'); return; }
   var subjectRaw = '【賞味期限アラート】まもなく期限の商品があります';
   var bodyRaw = '賞味期限リマインダーからのお知らせです。\n\n以下の商品の賞味期限が近づいています。\n\n' +
-    notifyTargets.map(function(i){ return '・'+i.name+'（期限: '+i.expiry+'、あと'+getDaysLeft(i.expiry)+'日）'; }).join('\n') +
+    notifyTargets.map(function(i){ return '・'+i.name+'（期限: '+i.expiry.replace(/-/g,'/')+'、あと'+getDaysLeft(i.expiry)+'日）'; }).join('\n') +
     '\n\n早めにご確認ください。\n\n賞味期限リマインダー';
   var mailtoUrl = 'mailto:'+email+'?subject='+encodeURIComponent(subjectRaw)+'&body='+encodeURIComponent(bodyRaw);
 
