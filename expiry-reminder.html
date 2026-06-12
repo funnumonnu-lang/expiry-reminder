@@ -290,7 +290,7 @@
         <button class="confirm-btn" onclick="restoreFromCloud()" style="background:var(--amber-bg);color:var(--amber-text);border-color:var(--amber-text);font-weight:500;">置き換えて復元</button>
         <button class="confirm-btn" onclick="document.getElementById('restore-confirm').style.display='none'">キャンセル</button>
       </div>
-      <p style="font-size:11px;color:var(--text3);margin-top:10px;">チーム全員が同じURLと合言葉を設定すると、Drive上の1つの共有データ（expiry-reminder-backup.json）を全員で読み書きします。変更は操作のたびに即時反映され、アプリを開いたとき・タブに戻ったときに最新データを自動取得します。</p>
+      <p style="font-size:11px;color:var(--text3);margin-top:10px;">チーム全員が同じURLと合言葉を設定すると、Drive上の共有スプレッドシート（賞味期限リマインダー_データ）を全員で読み書きします。変更は操作のたびに即時反映され、アプリを開いたとき・タブに戻ったときに最新データを自動取得します。※ 写真はこの端末内のみに保存され、共有データには含まれません。</p>
     </div>
     <div class="card">
       <p class="section-label">データ管理</p>
@@ -724,7 +724,7 @@ function cloudOp(action, payload, silentOk) {
   opQueue = opQueue.then(function() {
     return fetch(settings.gasUrl, {
       method: 'POST',
-      body: JSON.stringify(Object.assign({ token: settings.gasToken, action: action }, payload || {}))
+      body: JSON.stringify(stripPhotos(Object.assign({ token: settings.gasToken, action: action }, payload || {})))
     }).then(function(r) { return r.json(); }).then(function(res) {
       if (res && res.ok && res.state) {
         applyState(res.state);
@@ -744,10 +744,42 @@ function cloudOp(action, payload, silentOk) {
   return opQueue;
 }
 
+// 送信データから画像(photo)を除く（スプレッドシート版は画像を保存しないため通信を軽くする）
+function stripPhotos(payload) {
+  var p = Object.assign({}, payload);
+  function clean(arr) {
+    return (arr || []).map(function(o) {
+      var c = {}; for (var k in o) { if (k !== 'photo') c[k] = o[k]; } return c;
+    });
+  }
+  if (p.items) p.items = clean(p.items);
+  if (p.entries) p.entries = clean(p.entries);
+  if (p.item) { var ci = {}; for (var k in p.item) { if (k !== 'photo') ci[k] = p.item[k]; } p.item = ci; }
+  if (p.data) {
+    p.data = Object.assign({}, p.data);
+    if (p.data.items) p.data.items = clean(p.data.items);
+    if (p.data.history) p.data.history = clean(p.data.history);
+  }
+  return p;
+}
+
 // サーバーの最新stateをローカルに反映
 function applyState(state) {
-  items = state.items || [];
-  dispHistory = state.history || [];
+  // サーバー側は画像を持たないため、同じidの商品にローカルの画像を引き継ぐ
+  var photoMap = {};
+  items.forEach(function(i) { if (i.photo) photoMap[i.id] = i.photo; });
+  dispHistory.forEach(function(h) { if (h.photo) photoMap['h' + h.id + h.disposedAt] = h.photo; });
+
+  items = (state.items || []).map(function(i) {
+    if (!i.photo && photoMap[i.id]) i.photo = photoMap[i.id];
+    return i;
+  });
+  dispHistory = (state.history || []).map(function(h) {
+    var key = 'h' + h.id + h.disposedAt;
+    if (!h.photo && photoMap[key]) h.photo = photoMap[key];
+    return h;
+  });
+
   if (state.settings) {
     var keepUrl = settings.gasUrl, keepToken = settings.gasToken;
     settings = Object.assign({ email: '', auto: 'manual', suppliers: [] }, state.settings);
