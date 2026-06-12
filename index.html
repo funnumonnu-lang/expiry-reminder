@@ -83,15 +83,9 @@
   .empty svg { width: 40px; height: 40px; margin-bottom: 10px; opacity: 0.3; display: block; margin-left: auto; margin-right: auto; }
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--text); color: var(--bg); padding: 10px 20px; border-radius: var(--radius); font-size: 13px; opacity: 0; transition: opacity 0.25s, transform 0.25s; pointer-events: none; z-index: 9999; white-space: nowrap; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-  .filter-bar { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 2px; }
+  .filter-bar { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
   .filter-btn { height: 30px; padding: 0 12px; border: 0.5px solid var(--border2); border-radius: 20px; font-size: 12px; background: var(--bg); color: var(--text2); cursor: pointer; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
   .filter-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
-  .search-bar { position: relative; margin-bottom: 10px; }
-  .search-bar input { width: 100%; height: 36px; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 0 32px 0 32px; font-size: 13px; background: var(--bg); color: var(--text); outline: none; box-sizing: border-box; transition: box-shadow 0.15s; }
-  .search-bar input:focus { box-shadow: 0 0 0 2.5px var(--blue-bg); border-color: #378add; }
-  .search-bar .si { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; width: 16px; height: 16px; }
-  .search-bar .sc { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text3); cursor: pointer; font-size: 15px; padding: 0; line-height: 1; display: none; }
-  .search-bar.has-value .sc { display: block; }
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
   .modal-overlay.show { display: flex; }
   .modal { background: var(--bg); border-radius: var(--radius-lg); padding: 20px; max-width: 360px; width: 100%; border: 0.5px solid var(--border); }
@@ -142,9 +136,9 @@
     <div class="stat-row" id="stat-row"></div>
     <div class="filter-bar" style="margin-bottom:8px;">
       <span style="font-size:12px;color:var(--text3);align-self:center;flex-shrink:0;">並び替え:</span>
-      <button class="filter-btn sort-btn active" id="sort-expiry" onclick="setSort('expiry',this)">📅 期限が近い順</button>
-      <button class="filter-btn sort-btn" id="sort-name" onclick="setSort('name',this)">🔤 商品名順</button>
-      <button class="filter-btn sort-btn" id="sort-created" onclick="setSort('created',this)">🕐 登録が新しい順</button>
+      <button class="filter-btn sort-btn active" id="sort-expiry" onclick="setSort('expiry',this)">📅 期限</button>
+      <button class="filter-btn sort-btn" id="sort-name" onclick="setSort('name',this)">🔤 商品名</button>
+      <button class="filter-btn sort-btn" id="sort-created" onclick="setSort('created',this)">🕐 登録日</button>
       <button class="filter-btn" id="select-mode-btn" onclick="toggleSelectionMode()" style="margin-left:auto;">☑ 選択</button>
     </div>
     <div id="bulk-bar" style="display:none;background:var(--bg);border:0.5px solid var(--border2);border-radius:12px;padding:10px 12px;margin-bottom:10px;">
@@ -158,11 +152,6 @@
         <button class="confirm-btn dispose-btn" onclick="bulkProcess('dispose')">🗑 まとめて廃棄</button>
         <button class="confirm-btn" onclick="bulkProcess('delete')" style="color:var(--text3);">完全削除</button>
       </div>
-    </div>
-    <div class="search-bar" id="search-bar">
-      <svg class="si" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-      <input type="search" id="search-input" placeholder="商品名で検索…" oninput="onSearchInput(this.value)" />
-      <button class="sc" onclick="clearSearch()" title="クリア">✕</button>
     </div>
     <div class="filter-bar">
       <button class="filter-btn active" onclick="setFilter('all',this)">すべて</button>
@@ -461,20 +450,6 @@ function renderStats() {
 }
 
 var currentSort = 'expiry';
-var currentSearch = '';
-
-function onSearchInput(val) {
-  currentSearch = val;
-  document.getElementById('search-bar').classList.toggle('has-value', val.length > 0);
-  renderList();
-}
-
-function clearSearch() {
-  currentSearch = '';
-  document.getElementById('search-input').value = '';
-  document.getElementById('search-bar').classList.remove('has-value');
-  renderList();
-}
 
 function setSort(s, btn) {
   currentSort = s;
@@ -508,11 +483,6 @@ function renderList() {
   if (supFilter && supFilter.value !== '__all__') {
     var sv = supFilter.value;
     filtered = filtered.filter(function(i){ return (i.supplier || '') === sv; });
-  }
-
-  if (currentSearch) {
-    var kw = currentSearch.toLowerCase();
-    filtered = filtered.filter(function(i){ return i.name.toLowerCase().indexOf(kw) !== -1; });
   }
 
   if (!filtered.length) {
